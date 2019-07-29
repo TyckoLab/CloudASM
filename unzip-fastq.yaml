@@ -1,0 +1,7 @@
+name: unzip-fastq
+inputParameters:
+  - name: ZIP
+  - name: UNZIP
+docker:
+  imageName: gcr.io/hackensack-tyco/wgbs-asm:latest
+  cmd: "gunzip -c $ZIP > $UNZIP"
