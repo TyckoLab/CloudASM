@@ -23,6 +23,20 @@ fi
 
 SIZE_DRIVE="50"
 
+gcloud config list
+gcloud config set compute/region ""
+
+
+gcloud alpha genomics pipelines run \
+    --project hackensack-tyco \
+    --command-line 'gunzip -c $ZIP > $UNZIP' \
+    --preemptible \
+    --cpus 2 \
+    --boot-disk-size="50" \
+    --inputs ZIP=gs://encode-wgbs/k562-test-pipeline/chunk1.fastq.gz \
+    --outputs UNZIP=gs://encode-serverless/k562/chunk1.fastq \
+    --logging gs://em-scratch/unzip.log
+
 
 
 gcloud alpha genomics pipelines run \
@@ -32,7 +46,7 @@ gcloud alpha genomics pipelines run \
     --command-line 'gunzip -c $ZIP > $UNZIP' \
     --preemptible \
     --cpus 2 \
-    --boot-disk-size=$SIZE_DRIVE \
+    --boot-disk-size="50" \
     --inputs ZIP=gs://encode-wgbs/k562-test-pipeline/chunk1.fastq.gz \
     --outputs UNZIP=gs://encode-serverless/k562/chunk1.fastq \
     --logging gs://em-scratch/unzip.log
