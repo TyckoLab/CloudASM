@@ -1,5 +1,7 @@
 FROM google/cloud-sdk:255.0.0
 
+## To create the image on Cloud Build: gcloud builds submit --timeout "1h" --tag gcr.io/hackensack-tyco/wgbs-asm
+
 #RUN apt-get update && apt-get upgrade -y
 RUN apt-get install build-essential -y
 
@@ -60,19 +62,7 @@ ENV PATH="${PACKAGES}/FastQC:${PATH}"
 # Gives rights to call the packages
 RUN chmod -R 777 $PACKAGES
 
-
-################## Download ref genome & variant database ######################
-
-RUN mkdir -p /ref_genome
-
-# We use hg19 (also called GRCh37) released in February 2009.
-RUN gsutil -m cp -r gs://ref_genomes/grc37 /ref_genome
-
-# Variant database (dbSNP150)
-RUN gsutil cp -o 'GSUtil:parallel_thread_count=1' -o 'GSUtil:sliced_object_download_max_components=8' cp gs://ref_genomes/dbSNP150_grc37_GATK/no_chr_dbSNP150_GRCh37.vcf /ref_genome
-
-
-# ##################  INSTALL R  ######################
+####################  INSTALL R  ######################
 
 # Install R 
 RUN apt-get install r-base r-base-dev -y

@@ -38,11 +38,11 @@ gcloud alpha genomics pipelines run \
     --logging gs://em-scratch/unzip.log
 
 
+###########################################
 
 gcloud alpha genomics pipelines run \
     --project hackensack-tyco \
-    --docker-image grc.io/hackensack-tyco/wgbs-asm \
-    --regions us-central1 \
+    --docker-image "grc.io/hackensack-tyco/wgbs-asm" \
     --command-line 'gunzip -c $ZIP > $UNZIP' \
     --preemptible \
     --cpus 2 \
@@ -50,6 +50,17 @@ gcloud alpha genomics pipelines run \
     --inputs ZIP=gs://encode-wgbs/k562-test-pipeline/chunk1.fastq.gz \
     --outputs UNZIP=gs://encode-serverless/k562/chunk1.fastq \
     --logging gs://em-scratch/unzip.log
+
+gcloud alpha genomics pipelines run \
+    --project hackensack-tyco \
+    --docker-image "grc.io/hackensack-tyco/wgbs-asm" \
+    --command-line 'samtools index ${BAM} ${BAI}' \
+    --inputs BAM=gs://encode-serverless/A549/A549_split_aligned_L01.000.R1_val_1_bismark_bt2_pe_sorted.bam \
+    --outputs BAI=gs://encode-serverless/A549/test.bam.bai
+
+
+
+##############################################
 
 gcloud alpha genomics pipelines run \
     --regions us-central1 \
@@ -124,6 +135,7 @@ COMMAND="/opt/gcp_variant_transforms/bin/vcf_to_bq \
   --temp_location ${TEMP_LOCATION} \
   --job_name vcf-to-bigquery \
   --runner DataflowRunner"
+
 gcloud alpha genomics pipelines run \
   --project "${GOOGLE_CLOUD_PROJECT}" \
   --logging "${TEMP_LOCATION}/runner_logs_$(date +%Y%m%d_%H%M%S).log" \
