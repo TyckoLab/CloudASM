@@ -1,11 +1,17 @@
-# Google Cloud-powered, scalable, low-cost bioinformatics pipeline to call allele-specific methylation on bisulfite-converted whole genomes
+# Cloud-powered, highly-scalable, cluster-free bioinformatics pipeline to call allele-specific methylation on bisulfite-converted whole genomes
+
+
+dsub is simply a wrapper around the pipelines API (which uses docker images as execution environments) 
 
 
 ## Table of contents
 
 [Introduction](#introduction)
+
 [Prerequisites](#prerequisites)
+
 [Pipeline overview](#pipeline-overview)
+
 [Bucket organization](#Bucket-organization)
 
 ## Introduction
@@ -19,6 +25,13 @@ We ran the pipeline on 10 ENCODE samples. The cost of running this whole pipelin
 The advantage of using the Google's genomics pipeline tool (still in alpha as of August 2019) is that it takes care of two cumbersome tasks: 1/ create, deploy, monitor, and delete a cluster and 2/ download files from buckets and upload results of a pipeline step to a bucket.
 
 ## Prerequisites
+
+### Installation
+
+Docker
+etc.
+
+### Prepare a file with the names of the files.
 
 To run this pipeline, you need an account with [Google Cloud](https://cloud.google.com/).
 

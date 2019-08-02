@@ -2,7 +2,8 @@ FROM google/cloud-sdk:255.0.0
 
 ## To create the image on Cloud Build: gcloud builds submit --timeout "1h" --tag gcr.io/hackensack-tyco/wgbs-asm
 
-#RUN apt-get update && apt-get upgrade -y
+RUN apt-get update -y 
+# We do NOT upgrade: apt-get upgrade -y
 RUN apt-get install build-essential -y
 
 # Convenient text editor
