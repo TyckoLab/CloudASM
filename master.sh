@@ -73,21 +73,47 @@ gsutil rm -r gs://$OUTPUT_B/output
 
 ########################## Unzip and rename fastq files ################################
 
-# prepare a batch file for decompressing the fastq files
-awk '{if (NR!=1) {print}}' samples.tsv > samples_noheader.tsv
-
 # Create an input file with parameters ()
+# awk -v INPUT_B="${INPUT_B}" \
+#     -v OUTPUT_B="${OUTPUT_B}" \
+#     'BEGIN { FS="\t"; OFS="\t" } \
+#     {if (NR!=1) \
+#      print $1, \
+#            "gs://"INPUT_B"/"$1"/"$2, \
+#            "gs://"OUTPUT_B"/"$1"/"$5".fastq"}' \
+#     samples.tsv > decompress.tsv 
+
+# # Add headers to the file
+# sed -i '1i --env SAMPLE\t--input ZIPPED\t--output UNZIPPED' decompress.tsv
+
+# Unzip the fastq files (WORKING)
+# dsub \
+#   --provider google-v2 \
+#   --project $PROJECT_ID \
+#   --zones $ZONE_ID \
+#   --logging gs://$OUTPUT_B/logging/ \
+#   --disk-size 10 \
+#   --preemptible \
+#   --image $DOCKER_IMAGE \
+#   --command 'gunzip ${ZIPPED} && mv ${ZIPPED%.gz} ${UNZIPPED}' \
+#   --tasks decompress.tsv \
+#   --wait
+
 awk -v INPUT_B="${INPUT_B}" \
     -v OUTPUT_B="${OUTPUT_B}" \
     'BEGIN { FS="\t"; OFS="\t" } \
-    {print "gs://"INPUT_B"/"$1"/"$2, \
-            10 * $6, \
-           "gs://"OUTPUT_B"/"$1"/"$5".fastq"}' \
-    samples_noheader.tsv > decompress.tsv 
+    {if (NR!=1) \
+     print "gs://"INPUT_B"/"$1"/"$2, \
+           $5".fastq", \
+           "gs://"OUTPUT_B"/"$1"/split/*.fastq"}' \
+    samples.tsv > decompress.tsv 
 
-sed -i '1i --input ZIPPED\t--env DISK_SIZE\t--output UNZIPPED' decompress.tsv
+# Add headers to the file
+sed -i '1i --input ZIPPED\t--env FASTQ\t--output OUTPUT_FILES' decompress.tsv
 
 
+# Unzip and split the fastq files in 12M-row files.
+# NOT WORKING
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -96,9 +122,76 @@ dsub \
   --disk-size 10 \
   --preemptible \
   --image $DOCKER_IMAGE \
-  --command 'gunzip ${ZIPPED} && mv ${ZIPPED%.gz} ${UNZIPPED}' \
+  --command 'gunzip ${ZIPPED} && \
+             mv ${ZIPPED%.gz} $(dirname "${ZIPPED}")/${FASTQ} && \
+             split -l 120000 \
+                --numeric-suffixes --suffix-length=3 \
+                --additional-suffix=.fastq \
+                $(dirname "${ZIPPED}")/${FASTQ} \
+                $(dirname "${OUTPUT_FILES}")/${FASTQ%fastq}' \
   --tasks decompress.tsv \
   --wait
 
 
+dsub \
+  --provider local \
+  --logging $WD/example/logging/ \
+  --image $DOCKER_IMAGE \
+  --input ZIPPED=$WD/example/sample1_chunk1.fastq.gz \
+  --output OUTPUT_FILES=$WD/example/split/*.fastq \
+  --env FASTQ="sample1_L01.R1.fastq" \
+  --command 'gunzip ${ZIPPED} && \
+              mv ${ZIPPED%.gz} $(dirname "${ZIPPED}")/$FASTQ && \
+              split -l 120000 \
+                  --numeric-suffixes --suffix-length=3 \
+                  --additional-suffix=.fastq \
+                  $(dirname "${ZIPPED}")/${FASTQ} \
+                  $(dirname "${OUTPUT_FILES}")/${FASTQ%fastq}' \
+  --wait
 
+########################## Split the fastq files ################################
+
+# Fetch the names of the unzipped fastq files
+awk -v OUTPUT_B="${OUTPUT_B}" \
+    'BEGIN { FS="\t"; OFS="\t" } \
+    {if (NR!=1) \
+    print $3, \
+          "gs://"OUTPUT_B"/"$1"/split/*.fastq"}' \
+    decompress.tsv > split.tsv
+
+# Add headers to the file
+sed -i '1i --input FASTQ\t--output OUTPUT_FILES' split.tsv
+
+# Split the fastq files in 12M-row files.
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --logging gs://$OUTPUT_B/logging/ \
+  --disk-size 10 \
+  --preemptible \
+  --image $DOCKER_IMAGE \
+  --command 'split -l 120000 \
+             --numeric-suffixes --suffix-length=3 \
+             --additional-suffix=.fastq \
+             ${FASTQ} $(dirname "${OUTPUT_FILES}")/$(basename "${FASTQ%fastq}")' \
+  --tasks split.tsv \
+  --wait
+
+# dsub \
+#   --provider local \
+#   --logging $WD/logging/ \
+#   --image $DOCKER_IMAGE \
+#   --input FASTQ=$WD/sample1_L01.R1.fastq \
+#   --output OUTPUT_FILES=$WD/split/*.fastq \
+#   --command 'split -l 120000 \
+#              --numeric-suffixes --suffix-length=3 \
+#              --additional-suffix=.fastq \
+#              ${FASTQ} $(dirname "${OUTPUT_FILES}")/$(basename "${FASTQ%fastq}")' \
+#   --wait
+
+
+split -l 12000000 --numeric-suffixes \
+    --suffix-length=3 --additional-suffix=.R2.fastq\
+    $WD/"unzipped_fastq"/${LANE}.R2.fastq \
+    $WD/"split_fastq"/${LANE}.
