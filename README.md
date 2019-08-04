@@ -30,6 +30,7 @@ The advantage of using the Google's genomics pipeline tool (still in alpha as of
 
 Docker
 etc.
+dos2unix
 
 ### Prepare a file with the names of the files.
 
