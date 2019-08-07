@@ -32,7 +32,7 @@ RUN gsutil -m cp -r gs://genomic-packages/bedtools2 $PACKAGES
 ENV PATH="${PACKAGES}/bedtools2/bin:${PATH}"
 
 # Bismark (Aligner)
-RUN gsutil -m cp -r gs://genomic-packages/bismark_v0.8.2 $PACKAGES
+RUN gsutil -m cp -r gs://genomic-packages/Bismark_v0.19.0 $PACKAGES
 ENV PATH="${PACKAGES}/Bismark_v0.19.0:${PATH}"
 
 # Cutadapt
@@ -79,5 +79,5 @@ RUN su - -c "R -e \"install.packages('data.table', repos='http://cran.rstudio.co
 # Default job to execute, here: display the date.
 CMD ["date"]
 
-# Set default container command
-#ENTRYPOINT ["/home"]
+# Set default container command (this will avoid Docker exit code 2 when run locally.)
+#ENTRYPOINT ["/bin/sh -c"]

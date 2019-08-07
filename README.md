@@ -26,11 +26,35 @@ The advantage of using the Google's genomics pipeline tool (still in alpha as of
 
 ## Prerequisites
 
+You need a ref genome.
+
+it needs to be prepared by bismark
+
 ### Installation
 
 Docker
 etc.
 dos2unix
+
+
+# Install Docker 
+https://docs.docker.com/install/
+
+# Install dsub
+
+git clone https://github.com/googlegenomics/dsub.git
+cd dsub
+
+python setup.py install
+
+# Install virtualenv, a tool to create isolated Python environments. 
+# Install https://virtualenv.pypa.io/en/stable/installation/
+
+# Go into any folder and type:
+virtualenv --python=python2.7 dsub_libs
+
+# Launch the virtual environment
+source dsub_libs/bin/activate
 
 ### Prepare a file with the names of the files.
 
