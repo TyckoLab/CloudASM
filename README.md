@@ -30,6 +30,10 @@ You need a ref genome.
 
 it needs to be prepared by bismark
 
+Clone the repository locally
+
+do not use any dash in the sample name (underscores are ok)
+
 ### Installation
 
 Docker

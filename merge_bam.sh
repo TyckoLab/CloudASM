@@ -39,7 +39,7 @@ java -Xmx48g \
     -jar $PICARD/MarkDuplicates.jar \
     INPUT=${TMP_DIR}/${SAMPLE}_chr${CHR}_sort_ARG.bam \
     OUTPUT=${TMP_DIR}/${SAMPLE}_chr${CHR}_sort_ARG_RD.bam \
-    METRICS_FILE=$(dirname ${OUTPUT_DIR})/${SAMPLE}_chr${CHR}_duplicates.txt \
+    METRICS_FILE=$(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_duplicates.txt \
     TMP_DIR=${TMP_DIR} \
     CREATE_INDEX=true \
     REMOVE_DUPLICATES=true \
@@ -50,5 +50,5 @@ samtools sort \
     -@ 14 \
     -n \
     ${TMP_DIR}/${SAMPLE}_chr${CHR}_sort_ARG_RD.bam \
-    $(dirname ${OUTPUT_DIR})/${SAMPLE}_chr${CHR}
+    $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}
 
