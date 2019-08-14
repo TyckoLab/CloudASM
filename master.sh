@@ -12,13 +12,16 @@
 
 ########################## Copy and paste within the bash ################################
 
-# GCP variables
+# GCP global variables
 PROJECT_ID="hackensack-tyco"
 REGION_ID="us-central1"
 ZONE_ID="us-central1-b"
 DOCKER_IMAGE="gcr.io/hackensack-tyco/wgbs-asm"
 
-# Names of the buckets (must be unique)
+# Big Query variables
+DATASET_ID="wgbs_asm" 
+
+# Cloud storage variables
 OUTPUT_B="em-encode-deux" # will be created by the script
 REF_DATA_B="wgbs-ref-files" # See documentation for what it needs to contain
 
@@ -277,7 +280,7 @@ dsub \
   --wait
 
 
-########################## Variant call + create a 500bp window around them ################################
+########################## Variant call  ################################
 
 ## TO BE TESTED
 
@@ -301,24 +304,58 @@ dsub \
   --script ${SCRIPTS}/variant_call.sh \
   --wait
 
-########################## Remove variants with zero CpG in their 500bp window ################################
+########################## Use BigQuery to create 500bp windows around variants ################################
+
+# Prepare TSV file
+echo -e "--env SAMPLE\t--env CHR" > window.tsv
+
+while read SAMPLE ; do
+  for CHR in `seq 1 22` X Y ; do 
+  echo -e "$SAMPLE\t$CHR" >> window.tsv
+  done
+done < sample_id.txt
+
+# Used for testing (to be deleted)
+#echo -e "gm12878\t1\ngm12878\t2\ngm12878\t3" >> window.tsv
+
+# Launch job
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --image $DOCKER_IMAGE \
+  --logging gs://$OUTPUT_B/logging/ \
+  --env BUCKET="$OUTPUT_B" \
+  --env PROJECT_ID="$PROJECT_ID" \
+  --env DATASET_ID="$DATASET_ID" \
+  --script ${SCRIPTS}/variant_window.sh \
+  --tasks window.tsv \
+  --wait
+
+########################## Keep variants "near" CpGs ################################
+
+# We use the 500bp window created above to qualify for "near"
+
+# Prepare TSV file
+echo -e "--env SAMPLE\t--env CHR\t--input VCF_500BP\t--output OUTPUT_DIR" > clean_variant.tsv
+
+while read SAMPLE ; do
+  for CHR in `seq 1 22` X Y ; do 
+  echo -e "${SAMPLE}\t${CHR}\tgs://${OUTPUT_B}/${SAMPLE}/variants_per_chr/${SAMPLE}_chr${CHR}_500bp.bed\tgs://$OUTPUT_B/${SAMPLE}/variant_shards/*" >> clean_variant.tsv
+  done
+done < sample_id.txt
 
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
-  --machine-type n1-standard-16 \
-  --disk-size 200 \
   --zones $ZONE_ID \
+  --machine-type n1-standard-4 \
+  --disk-size 20 \
   --image $DOCKER_IMAGE \
   --logging gs://$OUTPUT_B/logging/ \
-  --env SAMPLE="A549-extract" \
-  --env CHR="21" \
-  --env BUCKET = "$OUTPUT_B" \
-  --env PROJECT_ID="$PROJECT_ID" \
-  --env DATASET_ID="$DATASET_ID" \
-  --input BED_500="gs://$OUTPUT_B/A549-extract/variants_per_chr/A549-extract_chr21_500bp.bed" \
   --input CPG_POS="gs://$REF_DATA_B/hg19_CpG_pos.bed" \
-  --input VCF="gs://$REF_DATA_B/dbSNP150_grc37_GATK/no_chr_dbSNP150_GRCh37.vcf" \
-  --output OUTPUT_DIR="gs://$OUTPUT_B/A549-extract/variants_per_chr/*" \
   --script ${SCRIPTS}/variant_list.sh \
+  --tasks clean_variant.tsv \
   --wait
+
+########################## Generate a list of variants in shards ################################

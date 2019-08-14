@@ -1,44 +1,33 @@
 #!/bin/bash
 
-# Keep the variants with CpGs in their 500bp viscinity
+# Intersect the variant list with CpG positions
 intersectBed \
-    -a $(dirname $BED_500)/${SAMPLE}_chr${CHR}_vcf_500bp.bed \
-    -b ${CPG_POS} \
-    -wa \
-    -wb \
-    | awk 'BEGIN{FS=OFS="\t"} {print $11, $1,$3-250,$4,$5,$6,$7,$8,$9}' \
-    |  uniq > $(dirname $BED_500)/${SAMPLE}_chr${CHR}_500bp.vcftemp
+        -a "${VCF_500BP}" \
+        -b "${CPG_POS}" \
+        > $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_500bp_wCpG.bed
 
-# Creates a specific file for ASM calling. (chromosome, SNP id, coordinates)
-awk 'BEGIN{FS=OFS="\t"} {print $1,$3,$8}' \
-    ${SAMPLE}_chr${CHR}.vcf \
-    | sed 1d \
-    > snp_pos_${SAMPLE}_chr${CHR}
+# Create a list of all the variants on which to call ASM
+# Columns are chr, snp_id, and coordinates (chr:inf-sup)
+awk 'BEGIN { FS=OFS="\t" }
+        {print $1,$4,$9}' \
+        $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_500bp_wCpG.bed \
+         > $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_variants.txt
 
-# ${SAMPLE}_chr${CHR}.vcf is the final FILE.
+# Slice that list in 10 shards
+echo -e "1,50\n2,50\n3,50\n4,50\n5,40\n6,40\n7,40\n8,40\n9,30\n10,30\n11,30\n12,30\n13,20\n14,20\n15,20\n16,20\n17,15\n18,15\n19,15\n20,15\n21,10\n22,10\nX,5\nY,5" > shard_counts.txt
 
-# Slices the SNP pos file in 54 pieces.
-awk -v sample="${SAMPLE}_chr${CHR}" '{
-    a[NR] = $0
-}
-END {
-    for (i = 1; i in a; ++i) {
-        x = (i * 54 - 1) / NR + 1
-        sub(/\..*$/, "", x)
-        print a[i] >  x"_snp_pos_"sample
-    }
-}' snp_pos_${SAMPLE}_chr${CHR}
+# Determine the number of shards as a function of the chromosome
+SHARD_COUNT=$(awk -v CHR="${CHR}" -F "," '{if($1==CHR) print $2}' shard_counts.txt)
 
-# Creates a list of the files
-seq 1 `ls *_snp_pos_${SAMPLE}_chr${CHR} | wc -l` \
-    > ${SAMPLE}_chr${CHR}_list
+# Split the variant list in shards
+for ((SHARD = 1; SHARD < ${SHARD_COUNT}; SHARD++)); do
+  awk "(NR%${SHARD_COUNT})==${SHARD}"'{ print $0 }' \
+    $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_variants.txt \
+    > $(dirname "${OUTPUT_DIR}")/split-${SHARD}-of-${SHARD_COUNT}_${SAMPLE}_chr${CHR}.txt
+done
 
-##
+# Special situation not taken into account by the loop
+awk "(NR%${SHARD_COUNT})==0"'{ print $0 }' \
+    $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_variants.txt \
+    > $(dirname "${OUTPUT_DIR}")/split-${SHARD_COUNT}-of-${SHARD_COUNT}_${SAMPLE}_chr${CHR}.txt
 
-
-## 39,596
-## 239,754
-
-gm12878_chr22_20.vcf: 24,951
-${SAMPLE}_chr${CHR}_vcf_500bp.bed : 24,951
-${SAMPLE}_chr${CHR}_500bp.vcftemp (AFTER INTERSECTBED) : 213,709 rows?? (create a unique combination of window + SNP)
