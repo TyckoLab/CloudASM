@@ -193,7 +193,7 @@ dsub \
 ########################## Split chard's BAM by chromosome ################################
 
 # Prepare TSV file
-echo -e "--input BAM\t--output OUTPUT_DIR" > split.tsv
+echo -e "--input BAM\t--output OUTPUT_DIR" > split_bam.tsv
 
 while read SAMPLE ; do
   gsutil ls gs://$OUTPUT_B/$SAMPLE/aligned_per_chard/*.bam > bam_per_chard_${SAMPLE}.txt
@@ -202,7 +202,7 @@ while read SAMPLE ; do
   for i in `seq 1 $NB_BAM` ; do 
     echo 'gs://'$OUTPUT_B'/'$SAMPLE'/bam_per_chard_and_chr/*' >> output_dir_${SAMPLE}.txt
   done
-  paste -d '\t' bam_per_chard_${SAMPLE}.txt output_dir_${SAMPLE}.txt >> split.tsv
+  paste -d '\t' bam_per_chard_${SAMPLE}.txt output_dir_${SAMPLE}.txt >> split_bam.tsv
 done < sample_id.txt
 
 # Submit job
@@ -215,23 +215,23 @@ dsub \
   --image $DOCKER_IMAGE \
   --logging gs://$OUTPUT_B/logging/ \
   --script ${SCRIPTS}/split_bam.sh \
-  --tasks split.tsv \
+  --tasks split_bam.tsv \
   --wait
 
 
 ########################## Merge all BAMs by chromosome, clean them ################################
 
 # Prepare TSV file
-echo -e "--env SAMPLE\t--env CHR\t--input BAM_FILES\t--output OUTPUT_DIR" > merge.tsv
+echo -e "--env SAMPLE\t--env CHR\t--input BAM_FILES\t--output OUTPUT_DIR" > merge_bam.tsv
 
 while read SAMPLE ; do
   for CHR in `seq 1 22` X Y ; do 
-  echo -e "${SAMPLE}\t${CHR}\tgs://$OUTPUT_B/$SAMPLE/bam_per_chard_and_chr/*chr${CHR}.bam\tgs://$OUTPUT_B/$SAMPLE/bam_per_chr/*" >> merge.tsv
+  echo -e "${SAMPLE}\t${CHR}\tgs://$OUTPUT_B/$SAMPLE/bam_per_chard_and_chr/*chr${CHR}.bam\tgs://$OUTPUT_B/$SAMPLE/bam_per_chr/*" >> merge_bam.tsv
   done
 done < sample_id.txt
 
 # Print a message in the terminal
-echo "There are" $(cat merge.tsv | wc -l) "to be launched"
+echo "There are" $(cat merge_bam.tsv | wc -l) "to be launched"
 
 # Submit job
 dsub \
@@ -244,7 +244,7 @@ dsub \
   --image $DOCKER_IMAGE \
   --logging gs://$OUTPUT_B/logging/ \
   --script ${SCRIPTS}/merge_bam.sh \
-  --tasks merge.tsv \
+  --tasks merge_bam.tsv \
   --wait
 
 
@@ -253,16 +253,16 @@ dsub \
 # This step is required by the variant call Bis-SNP
 
 # Prepare TSV file
-echo -e "--env SAMPLE\t--env CHR\t--input BAM\t--output OUTPUT_DIR" > recal.tsv
+echo -e "--env SAMPLE\t--env CHR\t--input BAM\t--output OUTPUT_DIR" > bam_recalibration.tsv
 
 while read SAMPLE ; do
   for CHR in `seq 1 22` X Y ; do 
-  echo -e "$SAMPLE\t$CHR\tgs://$OUTPUT_B/$SAMPLE/bam_per_chr/${SAMPLE}_chr${CHR}.bam\tgs://$OUTPUT_B/$SAMPLE/recal_bam_per_chr/*" >> recal.tsv
+  echo -e "$SAMPLE\t$CHR\tgs://$OUTPUT_B/$SAMPLE/bam_per_chr/${SAMPLE}_chr${CHR}.bam\tgs://$OUTPUT_B/$SAMPLE/recal_bam_per_chr/*" >> bam_recalibration.tsv
   done
 done < sample_id.txt
 
 # Print a message in the terminal
-echo "There are" $(tail -n +2 recal.tsv | wc -l) "to be launched"
+echo "There are" $(tail -n +2 bam_recalibration.tsv | wc -l) "to be launched"
 
 # Re-calibrate the BAM files.
 dsub \
@@ -276,13 +276,23 @@ dsub \
   --input REF_GENOME="gs://$REF_DATA_B/grc37/*" \
   --input VCF="gs://$REF_DATA_B/dbSNP150_grc37_GATK/no_chr_dbSNP150_GRCh37.vcf" \
   --script ${SCRIPTS}/bam_recalibration.sh \
-  --tasks recal.tsv \
+  --tasks bam_recalibration.tsv \
   --wait
 
 
 ########################## Variant call  ################################
 
-## TO BE TESTED
+# REPLACE VCF WITH THE ONE THAT WAS CLEANED
+
+# Prepare TSV file
+echo -e "--env SAMPLE\t--env CHR\t--input BAM_BAI\t--output OUTPUT_DIR" > variant_call.tsv
+
+while read SAMPLE ; do
+  for CHR in `seq 1 22` X Y ; do 
+  echo -e "$SAMPLE\t$CHR\tgs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.ba*\tgs://$OUTPUT_B/${SAMPLE}/variants_per_chr/*" >> variant_call.tsv
+  done
+done < sample_id.txt
+
 
 dsub \
   --provider google-v2 \
@@ -292,31 +302,25 @@ dsub \
   --zones $ZONE_ID \
   --image $DOCKER_IMAGE \
   --logging gs://$OUTPUT_B/logging/ \
-  --env SAMPLE="A549-extract" \
-  --env CHR="21" \
-  --env BUCKET = "$OUTPUT_B" \
-  --env PROJECT_ID="$PROJECT_ID" \
-  --env DATASET_ID="$DATASET_ID" \
-  --input BAM_BAI="gs://$OUTPUT_B/A549-extract/recal_bam_per_chr/A549-extract_chr21_recal.ba*" \
   --input REF_GENOME="gs://$REF_DATA_B/grc37/*" \
   --input VCF="gs://$REF_DATA_B/dbSNP150_grc37_GATK/no_chr_dbSNP150_GRCh37.vcf" \
-  --output OUTPUT_DIR="gs://$OUTPUT_B/A549-extract/variants_per_chr/*" \
   --script ${SCRIPTS}/variant_call.sh \
+  --tasks variant_call.tsv \
   --wait
 
-########################## Use BigQuery to create 500bp windows around variants ################################
+########################## Create 500bp windows around variants ################################
 
 # Prepare TSV file
-echo -e "--env SAMPLE\t--env CHR" > window.tsv
+echo -e "--env SAMPLE\t--env CHR" > variant_window.tsv
 
 while read SAMPLE ; do
   for CHR in `seq 1 22` X Y ; do 
-  echo -e "$SAMPLE\t$CHR" >> window.tsv
+  echo -e "$SAMPLE\t$CHR" >> variant_window.tsv
   done
 done < sample_id.txt
 
 # Used for testing (to be deleted)
-#echo -e "gm12878\t1\ngm12878\t2\ngm12878\t3" >> window.tsv
+#echo -e "gm12878\t1\ngm12878\t2\ngm12878\t3" >> variant_window.tsv
 
 # Launch job
 dsub \
@@ -329,21 +333,36 @@ dsub \
   --env PROJECT_ID="$PROJECT_ID" \
   --env DATASET_ID="$DATASET_ID" \
   --script ${SCRIPTS}/variant_window.sh \
-  --tasks window.tsv \
+  --tasks variant_window.tsv \
   --wait
 
-########################## Keep variants "near" CpGs ################################
+########################## Generate lists of variants to call ASM on ################################
 
 # We use the 500bp window created above to qualify for "near"
 
 # Prepare TSV file
-echo -e "--env SAMPLE\t--env CHR\t--input VCF_500BP\t--output OUTPUT_DIR" > clean_variant.tsv
+echo -e "--env SAMPLE\t--env CHR\t--input VCF_500BP\t--output OUTPUT_DIR" > variant_list.tsv
 
 while read SAMPLE ; do
   for CHR in `seq 1 22` X Y ; do 
-  echo -e "${SAMPLE}\t${CHR}\tgs://${OUTPUT_B}/${SAMPLE}/variants_per_chr/${SAMPLE}_chr${CHR}_500bp.bed\tgs://$OUTPUT_B/${SAMPLE}/variant_shards/*" >> clean_variant.tsv
+  echo -e "${SAMPLE}\t${CHR}\tgs://${OUTPUT_B}/${SAMPLE}/variants_per_chr/${SAMPLE}_chr${CHR}_500bp.bed\tgs://$OUTPUT_B/${SAMPLE}/variant_shards/*" >> variant_list.tsv
   done
 done < sample_id.txt
+
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --machine-type n1-standard-2 \
+  --disk-size 20 \
+  --image $DOCKER_IMAGE \
+  --logging gs://$OUTPUT_B/logging/ \
+  --input CPG_POS="gs://$REF_DATA_B/hg19_CpG_pos.bed" \
+  --script ${SCRIPTS}/variant_list.sh \
+  --tasks variant_list.tsv \
+  --wait
+
+########################## Create a pair of (REF, ALT) of each BAM for each combination [SAM, snp shard] ################################
 
 dsub \
   --provider google-v2 \
@@ -354,8 +373,7 @@ dsub \
   --image $DOCKER_IMAGE \
   --logging gs://$OUTPUT_B/logging/ \
   --input CPG_POS="gs://$REF_DATA_B/hg19_CpG_pos.bed" \
-  --script ${SCRIPTS}/variant_list.sh \
-  --tasks clean_variant.tsv \
+  --script ${SCRIPTS}/genotype.sh \
+  --tasks genotype.tsv \
   --wait
 
-########################## Generate a list of variants in shards ################################
