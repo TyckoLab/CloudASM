@@ -320,7 +320,7 @@ while read SAMPLE ; do
 done < sample_id.txt
 
 # Used for testing (to be deleted)
-#echo -e "gm12878\t1\ngm12878\t2\ngm12878\t3" >> variant_window.tsv
+#echo -e "gm12878\t20\ngm12878\t21\ngm12878\t22" >> variant_window.tsv
 
 # Launch job
 dsub \
@@ -353,8 +353,8 @@ dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
-  --machine-type n1-standard-2 \
-  --disk-size 20 \
+  --machine-type n1-highmem-4 \
+  --disk-size 50 \
   --image $DOCKER_IMAGE \
   --logging gs://$OUTPUT_B/logging/ \
   --input CPG_POS="gs://$REF_DATA_B/hg19_CpG_pos.bed" \
@@ -364,6 +364,12 @@ dsub \
 
 ########################## Create a pair of (REF, ALT) of each BAM for each combination [SAM, snp shard] ################################
 
+# Need SNP ID, chr, position, window of 2000 centered on SNP.
+#100,000 SNP x 54 in chr 1
+
+SAMPLE="gm12878"
+CHR="22"
+
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -372,7 +378,10 @@ dsub \
   --disk-size 20 \
   --image $DOCKER_IMAGE \
   --logging gs://$OUTPUT_B/logging/ \
-  --input CPG_POS="gs://$REF_DATA_B/hg19_CpG_pos.bed" \
+  --input BAM_BAI="gs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.ba*" \
+  --input SNP_LIST="gs://$OUTPUT_B/$SAMPLE/variant_shards/split-1-of-50_${SAMPLE}_chr${CHR}.txt" \
+  --input VCF="gs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}.vcf" \
+  --output OUTPUT_FOLDER="gs://$OUTPUT_B/$SAMPLE/genotype/*" \
   --script ${SCRIPTS}/genotype.sh \
   --tasks genotype.tsv \
   --wait
