@@ -297,7 +297,7 @@ dsub \
   --tasks variant_call.tsv \
   --wait
 
-########################## Create 500bp windows around variants ################################
+########################## Generate a list of variants per chr ################################
 
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env CHR" > variant_window.tsv
@@ -310,16 +310,6 @@ done < sample_id.txt
 
 # Used for testing (to be deleted)
 #echo -e "gm12878\t20\ngm12878\t21\ngm12878\t22" >> variant_window.tsv
-
-# Import CpG positions in BiG Query
-# Import the VCF file in Big Query without the VCF header
-bq --location=US load \
-               --replace \
-               --source_format=CSV \
-               --field_delimiter "\t" \
-               ${DATASET_ID}.hg19_cpg_pos \
-               gs://$REF_DATA_B/hg19_CpG_pos.bed \
-               chr:STRING,inf:INT64,sup:INT64
 
 # Launch job
 dsub \
@@ -335,16 +325,16 @@ dsub \
   --tasks variant_window.tsv \
   --wait
 
-########################## Generate lists of variants to call ASM on ################################
+########################## Split the variants in 200 shards ################################
 
 # We use the 500bp window created above to qualify for "near"
 
 # Prepare TSV file
-echo -e "--env SAMPLE\t--env CHR\t--input VCF_500BP\t--output OUTPUT_DIR" > variant_list.tsv
+echo -e "--env SAMPLE\t--env CHR\t--input VARIANTS_CHR\t--output OUTPUT_DIR" > variant_list.tsv
 
 while read SAMPLE ; do
   for CHR in `seq 1 22` X Y ; do 
-  echo -e "${SAMPLE}\t${CHR}\tgs://${OUTPUT_B}/${SAMPLE}/variants_per_chr/${SAMPLE}_chr${CHR}_500bp.bed\tgs://$OUTPUT_B/${SAMPLE}/variant_shards/*" >> variant_list.tsv
+  echo -e "${SAMPLE}\t${CHR}\tgs://${OUTPUT_B}/${SAMPLE}/variants_per_chr/${SAMPLE}_chr${CHR}_variants.txt\tgs://$OUTPUT_B/${SAMPLE}/variant_shards/*" >> variant_list.tsv
   done
 done < sample_id.txt
 
@@ -352,12 +342,13 @@ dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
-  --machine-type n1-highmem-4 \
-  --disk-size 50 \
   --image $DOCKER_IMAGE \
   --logging gs://$OUTPUT_B/logging/ \
-  --input CPG_POS="gs://$REF_DATA_B/hg19_CpG_pos.bed" \
-  --script ${SCRIPTS}/variant_list.sh \
+  --command 'split -l 200 \
+                --numeric-suffixes --suffix-length=6 \
+                --additional-suffix=.txt \
+                ${VARIANTS_CHR}\
+                $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_variants_' \
   --tasks variant_list.tsv \
   --wait
 

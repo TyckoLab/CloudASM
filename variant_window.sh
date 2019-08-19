@@ -97,5 +97,5 @@ bq query \
 bq extract \
     --field_delimiter "\t" \
     --print_header=false \
-    ${DATASET_ID}.${SAMPLE}_chr${CHR}_500bp \
+    ${DATASET_ID}.${SAMPLE}_chr${CHR}_500bp_wCpG \
     gs://$BUCKET/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}_variants.txt

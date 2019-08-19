@@ -128,13 +128,14 @@ dsub \
   --command 'bq --location=US load \
                --replace \
                --source_format=CSV \
-               --field_delimiter "\t" \
+               --field_delimiter " " \
                ${DATASET_ID}.${SAMPLE}_CpG${STRAND} \
                ${CONTEXT} \
                read_id:STRING,meth_state:STRING,chr:STRING,pos:INTEGER,meth_call:STRING' \
   --tasks context_to_bq.tsv \
   --wait
 
+## Note: the job fails if the field delimiter is the tab.
 
 ################################# Create bedgraph files of CpG coverage and CpG methylation % ########
 
@@ -160,3 +161,11 @@ dsub \
   --tasks bedgraph.tsv \
   --wait
 
+
+########### A few interesting notes
+
+--gm12878
+--590,000 CpGs in chr 22.
+--528,800 with at least a coverage of 10x
+--404,000 with at least a cov of 10x and a methylation of less than 100% and more than zero
+-- 70% of CpG are left after these simple filters
