@@ -1,14 +1,3 @@
-# Pre-requisities
-
-
-##### Data
-# Have a bucket already created with one folder per sample. 
-# Each folder should include the zipped fastq files
-# In the bucket, there should be a tsv file "samples.tsv" with each file name, its lane number, its read number (R1 or R2), and the size of the zipped fastq in GB
-
-##### Authentification
-# Be authentificated by gcloud (type "gcloud config list" to confirm)
-
 
 ########################## Copy and paste within the bash ################################
 
@@ -321,6 +310,16 @@ done < sample_id.txt
 
 # Used for testing (to be deleted)
 #echo -e "gm12878\t20\ngm12878\t21\ngm12878\t22" >> variant_window.tsv
+
+# Import CpG positions in BiG Query
+# Import the VCF file in Big Query without the VCF header
+bq --location=US load \
+               --replace \
+               --source_format=CSV \
+               --field_delimiter "\t" \
+               ${DATASET_ID}.hg19_cpg_pos \
+               gs://$REF_DATA_B/hg19_CpG_pos.bed \
+               chr:STRING,inf:INT64,sup:INT64
 
 # Launch job
 dsub \

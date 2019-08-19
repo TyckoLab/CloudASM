@@ -202,3 +202,99 @@ dsub \
 #   --output OUTPUT_DIR="gs://$OUTPUT_B/A549-extract/recal_bam_per_chr/*" \
 #   --script $HOME/GITHUB_REPOS/wgbs-asm/bam_recalibration.sh \
 #   --wait
+
+
+
+
+######## TEST GENOMIC OVERLAP WITH BIG QUERY
+
+
+
+# Import the VCF file in Big Query without the VCF header
+bq --location=US load \
+               --replace=false \
+               --source_format=CSV \
+               --field_delimiter "\t" \
+               ${DATASET_ID}.hg19_cpg_pos \
+               gs://$REF_DATA_B/hg19_CpG_pos.bed \
+               chr:STRING,inf:INT64,sup:INT64
+
+# Creates duplicate rows with snp_id
+
+WITH
+  variants AS (
+    SELECT
+      chr AS chr_variants,
+      inf AS inf_variants,
+      sup AS sup_variants
+    FROM
+      `hackensack-tyco.wgbs_asm.hg19_cpg_pos`
+  )
+  SELECT DISTINCT
+    *
+  FROM
+     `hackensack-tyco.wgbs_asm.gm12878_21_500bp` AS intervals
+  INNER JOIN
+    variants ON
+      variants.chr_variants = chr
+      AND variants.inf_variants >= inf_500
+      AND variants.sup_variants <= sup_500
+  GROUP BY 
+      snp_id
+
+
+# Working
+
+WITH
+  variants AS (
+    SELECT
+      chr AS chr_variants,
+      inf AS inf_variants,
+      sup AS sup_variants
+    FROM
+      `hackensack-tyco.wgbs_asm.hg19_cpg_chr21_extract`
+  )
+  SELECT DISTINCT
+    snp_id,
+    chr,
+    pos,
+    coord_2000,
+    ref,
+    alt,
+    cov
+  FROM
+     `hackensack-tyco.wgbs_asm.gm12878_21_500bp`
+  INNER JOIN
+    variants ON
+      variants.chr_variants = chr
+      AND variants.inf_variants >= inf_500
+      AND variants.sup_variants <= sup_500
+
+
+
+#### WORKING
+
+WITH
+  variants AS (
+    SELECT
+      chr AS chr_variants,
+      inf AS inf_variants,
+      sup AS sup_variants
+    FROM
+      `hackensack-tyco.wgbs_asm.hg19_cpg_chr21_extract`
+  )
+  SELECT DISTINCT
+    snp_id,
+    chr,
+    pos,
+    coord_2000,
+    ref,
+    alt,
+    cov
+  FROM
+     `hackensack-tyco.wgbs_asm.gm12878_21_500bp`
+  INNER JOIN
+    variants ON
+      variants.chr_variants = chr
+      AND variants.inf_variants >= inf_500
+      AND variants.sup_variants <= sup_500
