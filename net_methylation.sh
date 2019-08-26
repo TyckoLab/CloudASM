@@ -139,6 +139,9 @@ dsub \
 
 ################################# Create bedgraph files of CpG coverage and CpG methylation % ########
 
+# This script also creates a unique file, on Big Query, per sample with read id, chr,
+# pos, methylation count, coverage count, strand (OB or OT)
+
 # Prepare TSV file
 echo -e "--env SAMPLE" > bedgraph.tsv
 
