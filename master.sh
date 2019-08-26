@@ -269,6 +269,35 @@ dsub \
   --wait
 
 
+########################## Variant call  ################################
+
+# Before doing the variant call, the SAM file is exported in the bucket
+
+# Prepare TSV file
+echo -e "--env SAMPLE\t--env CHR\t--input BAM_BAI\t--output OUTPUT_DIR" > variant_call.tsv
+
+while read SAMPLE ; do
+  for CHR in `seq 1 22` X Y ; do 
+  echo -e "$SAMPLE\t$CHR\tgs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.ba*\tgs://$OUTPUT_B/${SAMPLE}/variants_per_chr/*" >> variant_call.tsv
+  done
+done < sample_id.txt
+
+
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --machine-type n1-standard-16 \
+  --disk-size 500 \
+  --zones $ZONE_ID \
+  --image $DOCKER_IMAGE \
+  --logging gs://$OUTPUT_B/logging/ \
+  --input REF_GENOME="gs://$REF_DATA_B/grc37/*" \
+  --input VCF="gs://$REF_DATA_B/dbSNP150_grc37_GATK/no_chr_dbSNP150_GRCh37.vcf" \
+  --script ${SCRIPTS}/variant_call.sh \
+  --tasks variant_call.tsv \
+  --wait
+
+
 ########################## TEMP TO BE DELETED ################################
 
 #### TEMP TO BE DELETED
@@ -294,7 +323,7 @@ dsub \
 
 ########################## Export recal bam to Big Query ################################
 
-# One table per sample
+# The SAM file was created by the variant_call script
 
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env SAM" > sam_to_bq.tsv
@@ -308,7 +337,6 @@ while read SAMPLE ; do
   bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_recal_sam
 
 done < sample_id.txt
-
 
 # Launch
 dsub \
@@ -340,37 +368,6 @@ dsub \
   --command 'gsutil rm ${SAM}' \
   --tasks sam_to_bq.tsv \
   --wait
-
-
-########################## Variant call  ################################
-
-# Before doing the variant call, the SAM file is exported in the bucket
-
-# Prepare TSV file
-echo -e "--env SAMPLE\t--env CHR\t--input BAM_BAI\t--output OUTPUT_DIR" > variant_call.tsv
-
-while read SAMPLE ; do
-  for CHR in `seq 1 22` X Y ; do 
-  echo -e "$SAMPLE\t$CHR\tgs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.ba*\tgs://$OUTPUT_B/${SAMPLE}/variants_per_chr/*" >> variant_call.tsv
-  done
-done < sample_id.txt
-
-
-dsub \
-  --provider google-v2 \
-  --project $PROJECT_ID \
-  --machine-type n1-standard-16 \
-  --disk-size 500 \
-  --zones $ZONE_ID \
-  --image $DOCKER_IMAGE \
-  --logging gs://$OUTPUT_B/logging/ \
-  --input REF_GENOME="gs://$REF_DATA_B/grc37/*" \
-  --input VCF="gs://$REF_DATA_B/dbSNP150_grc37_GATK/no_chr_dbSNP150_GRCh37.vcf" \
-  --script ${SCRIPTS}/variant_call.sh \
-  --tasks variant_call.tsv \
-  --wait
-
-
 
 ########################## Generate a list of variants per chr, based on CpG positions in the ref genome ################################
 
