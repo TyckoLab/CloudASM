@@ -269,9 +269,82 @@ dsub \
   --wait
 
 
+########################## TEMP TO BE DELETED ################################
+
+#### TEMP TO BE DELETED
+
+# dsub \
+#   --provider google-v2 \
+#   --project $PROJECT_ID \
+#   --preemptible \
+#   --machine-type n1-standard-4 \
+#   --disk-size 500 \
+#   --zones $ZONE_ID \
+#   --image $DOCKER_IMAGE \
+#   --logging gs://$OUTPUT_B/logging/ \
+#   --input BAM="gs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.bam" \
+#   --input BAI="gs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.bai" \
+#   --output SAM="gs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.sam" \
+#   --command 'samtools view -o \
+#                 ${SAM} \
+#                 ${BAM}' \
+#   --wait
+##############
+
+
+########################## Export recal bam to Big Query ################################
+
+# One table per sample
+
+# Prepare TSV file
+echo -e "--env SAMPLE\t--env SAM" > sam_to_bq.tsv
+
+while read SAMPLE ; do
+  for CHR in `seq 1 22` X Y ; do 
+    echo -e "$SAMPLE\tgs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.sam" >> sam_to_bq.tsv
+  done
+  
+  # Delete existing SAM on big query
+  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_recal_sam
+
+done < sample_id.txt
+
+
+# Launch
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --preemptible \
+  --zones $ZONE_ID \
+  --image $DOCKER_IMAGE \
+  --logging gs://$OUTPUT_B/logging/ \
+  --env DATASET_ID="${DATASET_ID}" \
+  --command 'bq --location=US load \
+               --replace=false \
+               --source_format=CSV \
+               --field_delimiter "\t" \
+               ${DATASET_ID}.${SAMPLE}_recal_sam \
+               ${SAM} \
+               read_id:STRING,flag:INTEGER,chr:STRING,read_start:INTEGER,mapq:INTEGER,cigar:STRING,rnext:STRING,mate_read_start:INTEGER,length:INTEGER,seq:STRING,score:STRING,bismark:STRING,picard_flag:STRING,read_g:STRING,genome_strand:STRING,NM_tag:STRING,meth:STRING,score_before_recal:STRING,read_strand:STRING' \
+  --tasks sam_to_bq.tsv \
+  --wait
+
+# Delete the SAM files from the bucket
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --preemptible \
+  --zones $ZONE_ID \
+  --image $DOCKER_IMAGE \
+  --logging gs://$OUTPUT_B/logging/ \
+  --command 'gsutil rm ${SAM}' \
+  --tasks sam_to_bq.tsv \
+  --wait
+
+
 ########################## Variant call  ################################
 
-# REPLACE VCF WITH THE ONE THAT WAS CLEANED
+# Before doing the variant call, the SAM file is exported in the bucket
 
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env CHR\t--input BAM_BAI\t--output OUTPUT_DIR" > variant_call.tsv
@@ -287,7 +360,7 @@ dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --machine-type n1-standard-16 \
-  --disk-size 200 \
+  --disk-size 500 \
   --zones $ZONE_ID \
   --image $DOCKER_IMAGE \
   --logging gs://$OUTPUT_B/logging/ \
@@ -297,7 +370,12 @@ dsub \
   --tasks variant_call.tsv \
   --wait
 
-########################## Generate a list of variants per chr ################################
+
+
+########################## Generate a list of variants per chr, based on CpG positions in the ref genome ################################
+
+# This step filters out the variants that are not at least within a 500bp window of a CpG
+# TO IMPROVE, FILTER OUT THE VARIANTS THAT ARE NOT AT LEAST NEAR A WELL ENOUGH COVERED CPG WITH AT LEAST 20% OF NET METHYLATION
 
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env CHR" > variant_window.tsv
@@ -316,6 +394,7 @@ dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
+  --preemptible \
   --image $DOCKER_IMAGE \
   --logging gs://$OUTPUT_B/logging/ \
   --env BUCKET="$OUTPUT_B" \
@@ -324,6 +403,7 @@ dsub \
   --script ${SCRIPTS}/variant_window.sh \
   --tasks variant_window.tsv \
   --wait
+
 
 ########################## Split the variants in 200 shards ################################
 
@@ -357,22 +437,22 @@ dsub \
 # Need SNP ID, chr, position, window of 2000 centered on SNP.
 #100,000 SNP x 54 in chr 1
 
-SAMPLE="gm12878"
-CHR="22"
+# SAMPLE="gm12878"
+# CHR="22"
 
-dsub \
-  --provider google-v2 \
-  --project $PROJECT_ID \
-  --zones $ZONE_ID \
-  --machine-type n1-standard-4 \
-  --disk-size 20 \
-  --image $DOCKER_IMAGE \
-  --logging gs://$OUTPUT_B/logging/ \
-  --input BAM_BAI="gs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.ba*" \
-  --input SNP_LIST="gs://$OUTPUT_B/$SAMPLE/variant_shards/split-1-of-50_${SAMPLE}_chr${CHR}.txt" \
-  --input VCF="gs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}.vcf" \
-  --output OUTPUT_FOLDER="gs://$OUTPUT_B/$SAMPLE/genotype/*" \
-  --script ${SCRIPTS}/genotype.sh \
-  --tasks genotype.tsv \
-  --wait
+# dsub \
+#   --provider google-v2 \
+#   --project $PROJECT_ID \
+#   --zones $ZONE_ID \
+#   --machine-type n1-standard-4 \
+#   --disk-size 20 \
+#   --image $DOCKER_IMAGE \
+#   --logging gs://$OUTPUT_B/logging/ \
+#   --input BAM_BAI="gs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.ba*" \
+#   --input SNP_LIST="gs://$OUTPUT_B/$SAMPLE/variant_shards/split-1-of-50_${SAMPLE}_chr${CHR}.txt" \
+#   --input VCF="gs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}.vcf" \
+#   --output OUTPUT_FOLDER="gs://$OUTPUT_B/$SAMPLE/genotype/*" \
+#   --script ${SCRIPTS}/genotype.sh \
+#   --tasks genotype.tsv \
+#   --wait
 

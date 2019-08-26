@@ -109,12 +109,12 @@ dsub \
 
 
 # Prepare TSV file
-echo -e "--env DATASET_ID\t--env SAMPLE\t--env STRAND\t--input CONTEXT" > context_to_bq.tsv
+echo -e "--env SAMPLE\t--env STRAND\t--input CONTEXT" > context_to_bq.tsv
 
 # Note: we replace the env variable with the same without any "dash"
 while read SAMPLE ; do
-  echo -e "${DATASET_ID}\t${SAMPLE}\tOT\tgs://$OUTPUT_B/${SAMPLE}/net_methyl/CpG_OT_${SAMPLE}_allchr.txt" >> context_to_bq.tsv
-  echo -e "${DATASET_ID}\t${SAMPLE}\tOB\tgs://$OUTPUT_B/${SAMPLE}/net_methyl/CpG_OB_${SAMPLE}_allchr.txt" >> context_to_bq.tsv
+  echo -e "${SAMPLE}\tOT\tgs://$OUTPUT_B/${SAMPLE}/net_methyl/CpG_OT_${SAMPLE}_allchr.txt" >> context_to_bq.tsv
+  echo -e "${SAMPLE}\tOB\tgs://$OUTPUT_B/${SAMPLE}/net_methyl/CpG_OB_${SAMPLE}_allchr.txt" >> context_to_bq.tsv
 done < sample_id.txt
 
 # Export all (OB, OT) pairs per sample in Big Query
@@ -125,6 +125,7 @@ dsub \
   --zones $ZONE_ID \
   --image $DOCKER_IMAGE \
   --logging gs://$OUTPUT_B/logging/ \
+  --env DATASET_ID="${DATASET_ID}" \
   --command 'bq --location=US load \
                --replace \
                --source_format=CSV \

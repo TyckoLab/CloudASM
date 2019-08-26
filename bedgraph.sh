@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This process will filter out about 30% of all CpG 
-# because they do not have at least 20% methylation or 10x coverage
+#because they do not have at least 20% methylation or 10x coverage
 
 # Re-order the OB file and transform methylation status in 1 or 0
 # Merge the OB and OT
