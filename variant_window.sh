@@ -47,7 +47,8 @@ bq query \
           pos,
           SAFE_CAST(inf_2000 AS STRING) as inf_2000,
           SAFE_CAST(sup_2000 AS STRING) as sup_2000
-        FROM win_2000),
+        FROM win_2000
+        ),
       -- create a coordinate of a 2000 bp window (to be used later)
       variants AS (
         SELECT 
@@ -66,14 +67,18 @@ bq query \
           snp_id LIKE '%rs%'
           AND cov >= 10
           AND BYTE_LENGTH(ref) = 1
-          AND BYTE_LENGTH(alt) = 1),
+          AND BYTE_LENGTH(alt) = 1
+        ),
       cpg_pos AS (
         SELECT
           chr AS chr_cpg_pos,
-          inf AS inf_cpg_pos,
-          sup AS sup_cpg_pos
+          pos AS inf_cpg_pos,
+          pos AS sup_cpg_pos
         FROM
-          ${DATASET_ID}.hg19_cpg_pos)
+          ${DATASET_ID}.${SAMPLE}_both_context
+        GROUP BY
+          chr, pos
+        )
   -- We make sure that there is a CpG in the 500bp window of the SNP
   SELECT DISTINCT
     snp_id,

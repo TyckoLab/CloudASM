@@ -271,8 +271,6 @@ dsub \
 
 ########################## Variant call  ################################
 
-# Before doing the variant call, the SAM file is exported in the bucket
-
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env CHR\t--input BAM_BAI\t--output OUTPUT_DIR" > variant_call.tsv
 
@@ -353,7 +351,7 @@ dsub \
                --field_delimiter "\t" \
                ${DATASET_ID}.${SAMPLE}_recal_sam \
                ${SAM} \
-               read_id:STRING,flag:INTEGER,chr:STRING,read_start:INTEGER,mapq:INTEGER,cigar:STRING,rnext:STRING,mate_read_start:INTEGER,length:INTEGER,seq:STRING,score:STRING,bismark:STRING,picard_flag:STRING,read_g:STRING,genome_strand:STRING,NM_tag:STRING,meth:STRING,score_before_recal:STRING,read_strand:STRING' \
+               read_id:STRING,flag:INTEGER,chr:STRING,read_start:INTEGER,mapq:INTEGER,cigar:STRING,rnext:STRING,mate_read_start:INTEGER,insert_length:INTEGER,seq:STRING,score:STRING,bismark:STRING,picard_flag:STRING,read_g:STRING,genome_strand:STRING,NM_tag:STRING,meth:STRING,score_before_recal:STRING,read_strand:STRING' \
   --tasks sam_to_bq.tsv \
   --wait
 
@@ -369,10 +367,10 @@ dsub \
   --tasks sam_to_bq.tsv \
   --wait
 
-########################## Generate a list of variants per chr, based on CpG positions in the ref genome ################################
+########################## Generate a list of variants per chr, based on nearby CpG covered in the sample ################################
 
 # This step filters out the variants that are not at least within a 500bp window of a CpG
-# TO IMPROVE, FILTER OUT THE VARIANTS THAT ARE NOT AT LEAST NEAR A WELL ENOUGH COVERED CPG WITH AT LEAST 20% OF NET METHYLATION
+# We are usually left with 90% of SNPs.
 
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env CHR" > variant_window.tsv
