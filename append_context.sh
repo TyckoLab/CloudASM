@@ -13,9 +13,11 @@ bq query \
             SELECT 
                 read_id, 
                 chr, 
+                -- Bismark gives the position of the C in the negative strand. need to 
+                -- subtract 1 to have the position of the CG in positive strand.
                 pos-1 as pos, 
                 IF(meth_call = 'Z',1,0) as meth, 
-                1 as cov,
+                1 as cov
             FROM 
                 ${DATASET_ID}.${SAMPLE}_CpGOB
             ),
@@ -25,7 +27,7 @@ bq query \
                 chr, 
                 pos, 
                 IF(meth_call = 'Z',1,0) as meth, 
-                1 as cov,
+                1 as cov
             FROM 
                 ${DATASET_ID}.${SAMPLE}_CpGOT
             )
@@ -37,7 +39,7 @@ bq query \
 # We impose a coverage of at least 10x per CpG.
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_merged_context_bed\
+    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_merged_context_bed \
     --replace=true \
     " 
     WITH MERGED_STRANDS AS (
@@ -64,11 +66,11 @@ bq query \
             cov >= 10
     "
 
-# Filter out from both_context_tmp the CpG sites that do not have at least 10x cov and 20% methylation
-# This removes about 30% of all CpG flagged by Bismark.
+# Filter out from both_context_tmp the CpG sites that do not have at least 10x cov 
+# This removes about 20% of all CpG flagged by Bismark.
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_both_context \
+    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_context \
     --replace=true \
     " 
     WITH 
@@ -78,15 +80,13 @@ bq query \
                 pos_start AS pos_cpg
             FROM
                 ${DATASET_ID}.${SAMPLE}_merged_context_bed
-            WHERE 
-                meth_perc >= 0.2
         )
         SELECT 
             read_id,
             chr,
             pos,
             meth,
-            cov,
+            cov
         FROM
             ${DATASET_ID}.${SAMPLE}_both_context_tmp
         INNER JOIN
@@ -140,8 +140,8 @@ bq extract \
 ########################## Delete most BQ files
 
 # Delete intermediary sets
-bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_CpGOB
-bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_CpGOT
+#bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_CpGOB
+#bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_CpGOT
 
 # Delete bedgraph files from BQ
 bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_both_context_tmp

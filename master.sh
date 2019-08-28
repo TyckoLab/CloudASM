@@ -236,6 +236,112 @@ dsub \
   --tasks merge_bam.tsv \
   --wait
 
+################################# Net methylation call
+
+# Note: this step requires one BAM file per chromosome (in "bam_per_chr") 
+
+# Prepare TSV file
+echo -e "--input BAM\t--output OUTPUT_DIR" > methyl.tsv
+
+while read SAMPLE ; do
+  for CHR in `seq 1 22` X Y ; do 
+  echo -e "gs://$OUTPUT_B/$SAMPLE/bam_per_chr/${SAMPLE}_chr${CHR}.bam\tgs://$OUTPUT_B/$SAMPLE/net_methyl/*" >> methyl.tsv
+  done
+done < sample_id.txt
+
+# Print a message in the terminal
+echo "There are" $(tail -n +2 methyl.tsv | wc -l) "to be launched"
+
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --preemptible \
+  --machine-type n1-highmem-8 \
+  --disk-size 50 \
+  --zones $ZONE_ID \
+  --image $DOCKER_IMAGE \
+  --logging gs://$OUTPUT_B/logging/ \
+  --command 'bismark_methylation_extractor \
+                  -p \
+                  --no_overlap \
+                  --multicore 3 \
+                  --merge_non_CpG \
+                  --bedGraph \
+                  --counts \
+                  --report \
+                  --buffer_size 48G \
+                  --output $(dirname ${OUTPUT_DIR}) \
+                  ${BAM} \
+                  --ignore 3 \
+                  --ignore_3prime 3 \
+                  --ignore_r2 2 \
+                  --ignore_3prime_r2 2' \
+  --tasks methyl.tsv \
+  --wait
+
+
+################################# Export context files in Big Query ##################
+
+# Prepare TSV file
+echo -e "--env SAMPLE\t--env STRAND\t--env CONTEXT" > context_to_bq.tsv
+
+while read SAMPLE ; do
+  for STRAND in OB OT ; do
+    for CHR in `seq 1 22` X Y ; do     
+        echo -e "${SAMPLE}\t${STRAND}\tgs://$OUTPUT_B/${SAMPLE}/net_methyl/CpG_${STRAND}_${SAMPLE}_chr${CHR}.txt" >> context_to_bq.tsv
+    done
+  
+  # Delete existing context file on big query
+  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_CpG${STRAND}
+  done
+done < sample_id.txt
+
+# We append all chromosomes in the same file. 
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --preemptible \
+  --image $DOCKER_IMAGE \
+  --logging gs://$OUTPUT_B/logging/ \
+  --env DATASET_ID="${DATASET_ID}" \
+  --command 'bq --location=US load \
+               --replace=false \
+               --source_format=CSV \
+               --skip_leading_rows 1 \
+               --field_delimiter " " \
+               ${DATASET_ID}.${SAMPLE}_CpG${STRAND} \
+               ${CONTEXT} \
+               read_id:STRING,meth_state:STRING,chr:STRING,pos:INTEGER,meth_call:STRING' \
+  --tasks context_to_bq.tsv \
+  --wait
+
+
+################################# Append context files and keep CpGs with 10x coverage min ########
+
+# Also this script exports bedgraph files of methylation and coverage to look into IGV for instance
+
+# Prepare TSV file
+echo -e "--env SAMPLE" > append_context.tsv
+
+while read SAMPLE ; do
+  echo -e "$SAMPLE" >> append_context.tsv
+done < sample_id.txt
+
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --image $DOCKER_IMAGE \
+  --preemptible \
+  --logging gs://$OUTPUT_B/logging/ \
+  --env PROJECT_ID="${PROJECT_ID}" \
+  --env DATASET_ID="${DATASET_ID}" \
+  --env OUTPUT_B="$OUTPUT_B" \
+  --script ${SCRIPTS}/append_context.sh \
+  --tasks append_context.tsv \
+  --wait
+
 
 ########################## Re-calibrate BAM  ################################
 
@@ -332,15 +438,14 @@ while read SAMPLE ; do
   done
   
   # Delete existing SAM on big query
-  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_recal_sam
+  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_recal_sam_raw
 
 done < sample_id.txt
 
-# Launch
+# We append all chromosomes in the same file.
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
-  --preemptible \
   --zones $ZONE_ID \
   --image $DOCKER_IMAGE \
   --logging gs://$OUTPUT_B/logging/ \
@@ -349,11 +454,34 @@ dsub \
                --replace=false \
                --source_format=CSV \
                --field_delimiter "\t" \
-               ${DATASET_ID}.${SAMPLE}_recal_sam \
+               ${DATASET_ID}.${SAMPLE}_recal_sam_raw \
                ${SAM} \
                read_id:STRING,flag:INTEGER,chr:STRING,read_start:INTEGER,mapq:INTEGER,cigar:STRING,rnext:STRING,mate_read_start:INTEGER,insert_length:INTEGER,seq:STRING,score:STRING,bismark:STRING,picard_flag:STRING,read_g:STRING,genome_strand:STRING,NM_tag:STRING,meth:STRING,score_before_recal:STRING,read_strand:STRING' \
   --tasks sam_to_bq.tsv \
   --wait
+
+########################## Clean each SAM (one per sample) %=##################
+
+# Prepare TSV file
+echo -e "--env SAMPLE" > clean_sam.tsv
+
+while read SAMPLE ; do
+  echo -e "$SAMPLE" >> clean_sam.tsv
+done < sample_id.txt
+
+
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --image $DOCKER_IMAGE \
+  --logging gs://$OUTPUT_B/logging/ \
+  --env DATASET_ID="${DATASET_ID}" \
+  --env PROJECT_ID="${PROJECT_ID}" \
+  --script ${SCRIPTS}/clean_sam.sh \
+  --tasks clean_sam.tsv \
+  --wait
+
 
 # Delete the SAM files from the bucket
 dsub \
@@ -367,37 +495,101 @@ dsub \
   --tasks sam_to_bq.tsv \
   --wait
 
-########################## Generate a list of variants per chr, based on nearby CpG covered in the sample ################################
 
-# This step filters out the variants that are not at least within a 500bp window of a CpG
-# We are usually left with 90% of SNPs.
+########################## Export VCF to Big Query (one per sample) ################################
+
 
 # Prepare TSV file
-echo -e "--env SAMPLE\t--env CHR" > variant_window.tsv
+echo -e "--env SAMPLE\t--env VCF" > vcf_to_bq.tsv
 
 while read SAMPLE ; do
-  for CHR in `seq 1 22` X Y ; do 
-  echo -e "$SAMPLE\t$CHR" >> variant_window.tsv
+  for CHR in `seq 21 22` ; do 
+    echo -e "$SAMPLE\tgs://$BUCKET/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}.vcf" >> vcf_to_bq.tsv
   done
+  
+  # Delete existing SAM on big query
+  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_raw
+
 done < sample_id.txt
 
-# Used for testing (to be deleted)
-#echo -e "gm12878\t20\ngm12878\t21\ngm12878\t22" >> variant_window.tsv
-
-# Launch job
+# We append all chromosomes files in the same file.
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
-  --preemptible \
   --image $DOCKER_IMAGE \
   --logging gs://$OUTPUT_B/logging/ \
-  --env BUCKET="$OUTPUT_B" \
-  --env PROJECT_ID="$PROJECT_ID" \
-  --env DATASET_ID="$DATASET_ID" \
-  --script ${SCRIPTS}/variant_window.sh \
-  --tasks variant_window.tsv \
+  --env DATASET_ID="${DATASET_ID}" \
+  --command 'bq --location=US load \
+               --replace=false \
+               --source_format=CSV \
+               --field_delimiter "\t" \
+               --skip_leading_rows 117 \
+               ${DATASET_ID}.${SAMPLE}_vcf_raw \
+               ${VCF} \
+               chr:STRING,pos:STRING,snp_id:STRING,ref:STRING,alt:STRING,qual:FLOAT,filter:STRING,info:STRING,format:STRING,data:STRING' \
+  --tasks vcf_to_bq.tsv \
   --wait
+
+########################## Clean each VCF (one per sample) %=##################
+
+# Filter out the SNPs that are not within 500bp of a CpG that is at least 10x covered.
+# This removes about 5% of SNPs. Takes ~30min
+
+# Prepare TSV file
+echo -e "--env SAMPLE" > clean_vcf.tsv
+
+while read SAMPLE ; do
+  echo -e "$SAMPLE" >> clean_vcf.tsv
+done < sample_id.txt
+
+
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --image $DOCKER_IMAGE \
+  --logging gs://$OUTPUT_B/logging/ \
+  --env DATASET_ID="${DATASET_ID}" \
+  --env PROJECT_ID="${PROJECT_ID}" \
+  --script ${SCRIPTS}/clean_vcf.sh \
+  --tasks clean_vcf.tsv \
+  --wait
+
+
+########################## Find the read IDs where to look for the SNP ##################
+
+
+bq query \
+    --use_legacy_sql=false \
+    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf \
+    --replace=true \
+    " WITH
+        variants AS (
+          SELECT * 
+          FROM 
+            ${DATASET_ID}.${SAMPLE}_vcf
+        )
+      SELECT * 
+      FROM 
+        ${DATASET_ID}.${SAMPLE}_vcf
+      INNER JOIN
+
+    "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ########################## Split the variants in 200 shards ################################
@@ -405,27 +597,27 @@ dsub \
 # We use the 500bp window created above to qualify for "near"
 
 # Prepare TSV file
-echo -e "--env SAMPLE\t--env CHR\t--input VARIANTS_CHR\t--output OUTPUT_DIR" > variant_list.tsv
+# echo -e "--env SAMPLE\t--env CHR\t--input VARIANTS_CHR\t--output OUTPUT_DIR" > variant_list.tsv
 
-while read SAMPLE ; do
-  for CHR in `seq 1 22` X Y ; do 
-  echo -e "${SAMPLE}\t${CHR}\tgs://${OUTPUT_B}/${SAMPLE}/variants_per_chr/${SAMPLE}_chr${CHR}_variants.txt\tgs://$OUTPUT_B/${SAMPLE}/variant_shards/*" >> variant_list.tsv
-  done
-done < sample_id.txt
+# while read SAMPLE ; do
+#   for CHR in `seq 1 22` X Y ; do 
+#   echo -e "${SAMPLE}\t${CHR}\tgs://${OUTPUT_B}/${SAMPLE}/variants_per_chr/${SAMPLE}_chr${CHR}_variants.txt\tgs://$OUTPUT_B/${SAMPLE}/variant_shards/*" >> variant_list.tsv
+#   done
+# done < sample_id.txt
 
-dsub \
-  --provider google-v2 \
-  --project $PROJECT_ID \
-  --zones $ZONE_ID \
-  --image $DOCKER_IMAGE \
-  --logging gs://$OUTPUT_B/logging/ \
-  --command 'split -l 200 \
-                --numeric-suffixes --suffix-length=6 \
-                --additional-suffix=.txt \
-                ${VARIANTS_CHR}\
-                $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_variants_' \
-  --tasks variant_list.tsv \
-  --wait
+# dsub \
+#   --provider google-v2 \
+#   --project $PROJECT_ID \
+#   --zones $ZONE_ID \
+#   --image $DOCKER_IMAGE \
+#   --logging gs://$OUTPUT_B/logging/ \
+#   --command 'split -l 200 \
+#                 --numeric-suffixes --suffix-length=6 \
+#                 --additional-suffix=.txt \
+#                 ${VARIANTS_CHR}\
+#                 $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_variants_' \
+#   --tasks variant_list.tsv \
+#   --wait
 
 ########################## Create a pair of (REF, ALT) of each BAM for each combination [SAM, snp shard] ################################
 
