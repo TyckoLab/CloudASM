@@ -16,7 +16,6 @@ bq query \
                 pos-1 as pos, 
                 IF(meth_call = 'Z',1,0) as meth, 
                 1 as cov,
-                'OB' as strand
             FROM 
                 ${DATASET_ID}.${SAMPLE}_CpGOB
             ),
@@ -27,7 +26,6 @@ bq query \
                 pos, 
                 IF(meth_call = 'Z',1,0) as meth, 
                 1 as cov,
-                'OT' as strand
             FROM 
                 ${DATASET_ID}.${SAMPLE}_CpGOT
             )
@@ -89,7 +87,6 @@ bq query \
             pos,
             meth,
             cov,
-            strand
         FROM
             ${DATASET_ID}.${SAMPLE}_both_context_tmp
         INNER JOIN

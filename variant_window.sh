@@ -87,7 +87,12 @@ bq query \
     coord_2000,
     ref,
     alt,
-    cov
+    cov,
+    -- below, we indicate on which strand the SNP REF/ALT could be observed
+    IF (ref = 'G' AND alt = 'A', 'CT',
+            IF (ref = 'A' AND alt = 'G','CT',
+              IF (ref = 'C' AND alt = 'T', 'GA',
+                IF (ref = 'T' AND alt = 'C', 'GA', 'both')))) AS strand 
   FROM
      variants
   INNER JOIN
