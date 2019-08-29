@@ -37,8 +37,8 @@ bq query \
         )
   -- We make sure that there is at least a CpG that is 10x covered within 500bp of the SNP
   -- since there are several CpG that may qualify we keep the distinct results
-  SELECT 
-    DISTINCT snp_id,
+  SELECT DISTINCT 
+    snp_id,
     chr,
     pos,
     ref,
@@ -46,10 +46,14 @@ bq query \
     cov,
     -- below, we indicate on which genome strand the SNP REF/ALT could be observed 
     -- with no ambiguity in a bisulfite converted sequence
-    IF (ref = 'G' AND alt = 'A', 'CT',
-            IF (ref = 'A' AND alt = 'G','CT',
-              IF (ref = 'C' AND alt = 'T', 'GA',
-                IF (ref = 'T' AND alt = 'C', 'GA', 'both')))) AS genome_strand 
+    IF (ref = 'G' AND alt = 'A', TRUE,
+            IF (ref = 'A' AND alt = 'G', TRUE,
+              IF (ref = 'C' AND alt = 'T', FALSE,
+                IF (ref = 'T' AND alt = 'C', FALSE, TRUE)))) AS CT_strand,
+    IF (ref = 'G' AND alt = 'A', FALSE,
+            IF (ref = 'A' AND alt = 'G', FALSE,
+              IF (ref = 'C' AND alt = 'T', TRUE,
+                IF (ref = 'T' AND alt = 'C', TRUE, TRUE)))) AS GA_strand 
   FROM
      variants
   INNER JOIN
