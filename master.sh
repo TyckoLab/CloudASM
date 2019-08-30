@@ -607,7 +607,16 @@ dsub \
 
 
 
+########################## Tag each read with REF or ALT ##################
 
+# We consider the cases where there are 1, 3, and 5 numbers in the CIGAR string
+# We leave out the 0.00093% where the CIGAR string has 7 numbers or more
+# Note: 0.2% of SNPs are left out.
+
+
+96% are a perfect match
+they all start with M
+2.5% of (snp,read_id) need to deal with the CIGAR
 
 ########################## Split the variants in 200 shards ################################
 
