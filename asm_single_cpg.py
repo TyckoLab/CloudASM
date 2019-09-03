@@ -5,14 +5,6 @@ import scipy.stats as stats
 import numpy as np
 import pandas as pd
 
-
-#                REF      ALT
-#methyl          8        2
-# not methyl     1        5
-
-# oddsratio, pvalue = stats.fisher_exact([[8, 2], [1, 5]])
-# print(pvalue)
-
 # The schema of the cpg genotype file is the following and the header is included
 # chr	STRING
 # pos	INTEGER
@@ -22,10 +14,10 @@ import pandas as pd
 # alt_cov	INTEGER
 # alt_meth	INTEGER
 
-
 CPG_GENOTYPE = os.environ['CPG_GENOTYPE']
 OUTPUT_FILE = os.environ['CPG_ASM']
 
+# Import CpG file into Python
 df = pd.read_csv(CPG_GENOTYPE) 
 
 # Function to extract Fisher p-value (5-digit rounding)

@@ -1,5 +1,5 @@
 
-########################## Copy and paste within the bash ################################
+########################## Variables ################################
 
 # GCP global variables
 PROJECT_ID="hackensack-tyco"
@@ -43,6 +43,14 @@ awk -F "\t" \
     print $1}' samples.tsv | uniq > sample_id.txt
 
 echo "There are" $(cat sample_id.txt | wc -l) "samples to be analyzed"
+
+# Prepare TSV file with just the samples (used for most jobs)
+echo -e "--env SAMPLE" > all_samples.tsv
+
+while read SAMPLE ; do
+    echo -e "${SAMPLE}" >> all_samples.tsv
+done < sample_id.txt
+
 
 ########################## Unzip, rename, and split fastq files ################################
 
@@ -387,15 +395,6 @@ dsub \
 
 ########################## Variant call  ################################
 
-# Prepare TSV file
-echo -e "--env SAMPLE\t--env CHR\t--input BAM_BAI\t--output OUTPUT_DIR" > variant_call.tsv
-
-while read SAMPLE ; do
-  for CHR in `seq 1 22` X Y ; do 
-  echo -e "$SAMPLE\t$CHR\tgs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.ba*\tgs://$OUTPUT_B/${SAMPLE}/variants_per_chr/*" >> variant_call.tsv
-  done
-done < sample_id.txt
-
 
 dsub \
   --provider google-v2 \
@@ -408,7 +407,7 @@ dsub \
   --input REF_GENOME="gs://$REF_DATA_B/grc37/*" \
   --input VCF="gs://$REF_DATA_B/dbSNP150_grc37_GATK/no_chr_dbSNP150_GRCh37.vcf" \
   --script ${SCRIPTS}/variant_call.sh \
-  --tasks variant_call.tsv \
+  --tasks all_samples.tsv \
   --wait
 
 
@@ -449,14 +448,6 @@ dsub \
 
 ########################## Clean each SAM (one per sample) %=##################
 
-# Prepare TSV file
-echo -e "--env SAMPLE" > clean_sam.tsv
-
-while read SAMPLE ; do
-  echo -e "$SAMPLE" >> clean_sam.tsv
-done < sample_id.txt
-
-
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -466,7 +457,7 @@ dsub \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
   --script ${SCRIPTS}/clean_sam.sh \
-  --tasks clean_sam.tsv \
+  --tasks all_samples.tsv \
   --wait
 
 
@@ -523,13 +514,6 @@ dsub \
 # Filter out the SNPs that are not within 500bp of a CpG that is at least 10x covered.
 # This removes about 5% of SNPs. Takes ~30min
 
-# Prepare TSV file
-echo -e "--env SAMPLE" > clean_vcf.tsv
-
-while read SAMPLE ; do
-  echo -e "$SAMPLE" >> clean_vcf.tsv
-done < sample_id.txt
-
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -539,7 +523,7 @@ dsub \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
   --script ${SCRIPTS}/clean_vcf.sh \
-  --tasks clean_vcf.tsv \
+  --tasks all_samples.tsv \
   --wait
 
 
@@ -598,13 +582,6 @@ dsub \
 # We leave out the 0.00093% where the CIGAR string has 7 numbers or more
 # Note: 0.05% of SNPs are left out when the SNP is at the last position of the read.
 
-# Prepare TSV file
-echo -e "--env SAMPLE" > genotype.tsv
-
-while read SAMPLE ; do
-    echo -e "${SAMPLE}" >> genotype.tsv
-done < sample_id.txt
-
 # Tag the read
 dsub \
   --provider google-v2 \
@@ -616,7 +593,7 @@ dsub \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
   --script ${SCRIPTS}/read_genotype.sh \
-  --tasks genotype.tsv \
+  --tasks all_samples.tsv \
   --wait
 
 # Tag the pair (CpG, snp) with REF or ALT
@@ -630,12 +607,20 @@ dsub \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
   --script ${SCRIPTS}/cpg_genotype.sh \
-  --tasks genotype.tsv \
+  --tasks all_samples.tsv \
   --wait
 
 ########################## Calculate ASM at the single CpG level ##################
 
 
+# Prepare TSV file
+echo -e "--input CPG_GENOTYPE\t--output CPG_ASM" > cpg_asm.tsv
+
+while read SAMPLE ; do
+    echo -e "gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_cpg_genotype.csv\tgs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_cpg_asm.csv" >> cpg_asm.tsv
+done < sample_id.txt
+
+# Using python environment.
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -644,20 +629,27 @@ dsub \
   --machine-type n1-standard-4 \
   --image ${DOCKER_PYTHON} \
   --logging gs://$OUTPUT_B/logging/ \
-  --input CPG_GENOTYPE="gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_cpg_genotype.csv" \
-  --output CPG_ASM="gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_cpg_asm.csv" \
   --script ${SCRIPTS}/asm_single_cpg.py \
+  --tasks cpg_asm.tsv \
   --wait
 
-
-
+# Import the file back into Big Query
 dsub \
-  --provider local \
-  --image ${DOCKER_PYTHON} \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --image ${DOCKER_GCP} \
   --logging gs://$OUTPUT_B/logging/ \
-  --input CPG_GENOTYPE="gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_cpg_genotype.csv" \
-  --output CPG_ASM="gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_cpg_asm.csv" \
-  --script ${SCRIPTS}/asm_single_cpg.py \
+  --env DATASET_ID="${DATASET_ID}" \
+  --env OUTPUT_B="${OUTPUT_B}" \
+  --command 'bq --location=US load \
+               --replace=true \
+               --autodetect \
+               --source_format=CSV \
+               --field_delimiter "," \
+                ${DATASET_ID}.${SAMPLE}_cpg_asm \
+               gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_cpg_asm.csv' \
+  --tasks all_samples.tsv \
   --wait
 
   
