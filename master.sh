@@ -644,15 +644,13 @@ dsub \
   --env OUTPUT_B="${OUTPUT_B}" \
   --command 'bq --location=US load \
                --replace=true \
-               --autodetect \
                --source_format=CSV \
                --field_delimiter "," \
                 ${DATASET_ID}.${SAMPLE}_cpg_asm \
-               gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_cpg_asm.csv' \
+               gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_cpg_asm.csv \
+               chr:STRING,pos:INTEGER,snp_id:INTEGER,ref_cov:INTEGER,ref_meth:INTEGER,alt_cov:INTEGER,alt_meth:INTEGER,fisher_pvalue:FLOAT' \
   --tasks all_samples.tsv \
   --wait
-
-  
 
 #  --tasks genotype.tsv \
 

@@ -33,4 +33,4 @@ def fisher_pvalue(row):
 df['fisher_pvalue'] = df.apply(fisher_pvalue, axis = 1)
 
 # Save to CSV
-df.to_csv (OUTPUT_FILE, index = None, header = True)
+df.to_csv (OUTPUT_FILE, index = None, header = False)
