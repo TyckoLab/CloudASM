@@ -175,7 +175,8 @@ bq query \
   "
 
 
-# Create a summary genotyping file
+# Create a summary genotyping file 
+# with the number of reads covering REF and ALT for each SNP
 
 bq query \
     --use_legacy_sql=false \

@@ -5,7 +5,17 @@
 PROJECT_ID="hackensack-tyco"
 REGION_ID="us-central1"
 ZONE_ID="us-central1-b"
-DOCKER_IMAGE="gcr.io/hackensack-tyco/wgbs-asm"
+
+# Docker images used for the scripts
+
+# Custom image with the genomics packages
+DOCKER_GENOMICS="gcr.io/hackensack-tyco/wgbs-asm"
+
+# Light-weight python image with statistical packages.
+DOCKER_PYTHON="gcr.io/hackensack-tyco/python"
+
+# Off-the-shelf GCP image for GCP-only jobs
+DOCKER_GCP="google/cloud-sdk:255.0.0"
 
 # Big Query variables
 DATASET_ID="wgbs_asm" 
@@ -58,7 +68,7 @@ dsub \
   --logging gs://$OUTPUT_B/logging/ \
   --disk-size 10 \
   --preemptible \
-  --image $DOCKER_IMAGE \
+  --image $DOCKER_GENOMICS \
   --command 'gunzip ${ZIPPED} && \
              mv ${ZIPPED%.gz} $(dirname "${ZIPPED}")/${FASTQ} && \
              split -l 1200000 \
@@ -105,7 +115,7 @@ dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
-  --image $DOCKER_IMAGE \
+  --image $DOCKER_GENOMICS \
   --machine-type n1-standard-2 \
   --preemptible \
   --logging gs://$OUTPUT_B/logging/ \
@@ -158,7 +168,7 @@ dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
-  --image $DOCKER_IMAGE \
+  --image $DOCKER_GENOMICS \
   --machine-type n1-standard-16 \
   --preemptible \
   --disk-size 40 \
@@ -201,7 +211,7 @@ dsub \
   --disk-size 30 \
   --preemptible \
   --zones $ZONE_ID \
-  --image $DOCKER_IMAGE \
+  --image $DOCKER_GENOMICS \
   --logging gs://$OUTPUT_B/logging/ \
   --script ${SCRIPTS}/split_bam.sh \
   --tasks split_bam.tsv \
@@ -230,7 +240,7 @@ dsub \
   --preemptible \
   --disk-size 30 \
   --zones $ZONE_ID \
-  --image $DOCKER_IMAGE \
+  --image $DOCKER_GENOMICS \
   --logging gs://$OUTPUT_B/logging/ \
   --script ${SCRIPTS}/merge_bam.sh \
   --tasks merge_bam.tsv \
@@ -259,7 +269,7 @@ dsub \
   --machine-type n1-highmem-8 \
   --disk-size 50 \
   --zones $ZONE_ID \
-  --image $DOCKER_IMAGE \
+  --image $DOCKER_GENOMICS \
   --logging gs://$OUTPUT_B/logging/ \
   --command 'bismark_methylation_extractor \
                   -p \
@@ -302,7 +312,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --preemptible \
-  --image $DOCKER_IMAGE \
+  --image $DOCKER_GENOMICS \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
   --command 'bq --location=US load \
@@ -332,7 +342,7 @@ dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
-  --image $DOCKER_IMAGE \
+  --image $DOCKER_GENOMICS \
   --preemptible \
   --logging gs://$OUTPUT_B/logging/ \
   --env PROJECT_ID="${PROJECT_ID}" \
@@ -366,7 +376,7 @@ dsub \
   --machine-type n1-standard-16 \
   --disk-size 200 \
   --zones $ZONE_ID \
-  --image $DOCKER_IMAGE \
+  --image $DOCKER_GENOMICS \
   --logging gs://$OUTPUT_B/logging/ \
   --input REF_GENOME="gs://$REF_DATA_B/grc37/*" \
   --input VCF="gs://$REF_DATA_B/dbSNP150_grc37_GATK/no_chr_dbSNP150_GRCh37.vcf" \
@@ -393,36 +403,13 @@ dsub \
   --machine-type n1-standard-16 \
   --disk-size 500 \
   --zones $ZONE_ID \
-  --image $DOCKER_IMAGE \
+  --image $DOCKER_GENOMICS \
   --logging gs://$OUTPUT_B/logging/ \
   --input REF_GENOME="gs://$REF_DATA_B/grc37/*" \
   --input VCF="gs://$REF_DATA_B/dbSNP150_grc37_GATK/no_chr_dbSNP150_GRCh37.vcf" \
   --script ${SCRIPTS}/variant_call.sh \
   --tasks variant_call.tsv \
   --wait
-
-
-########################## TEMP TO BE DELETED ################################
-
-#### TEMP TO BE DELETED
-
-# dsub \
-#   --provider google-v2 \
-#   --project $PROJECT_ID \
-#   --preemptible \
-#   --machine-type n1-standard-4 \
-#   --disk-size 500 \
-#   --zones $ZONE_ID \
-#   --image $DOCKER_IMAGE \
-#   --logging gs://$OUTPUT_B/logging/ \
-#   --input BAM="gs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.bam" \
-#   --input BAI="gs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.bai" \
-#   --output SAM="gs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.sam" \
-#   --command 'samtools view -o \
-#                 ${SAM} \
-#                 ${BAM}' \
-#   --wait
-##############
 
 
 ########################## Export recal bam to Big Query ################################
@@ -447,7 +434,7 @@ dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
-  --image $DOCKER_IMAGE \
+  --image ${DOCKER_GCP} \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
   --command 'bq --location=US load \
@@ -474,7 +461,7 @@ dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
-  --image $DOCKER_IMAGE \
+  --image ${DOCKER_GCP} \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
@@ -489,7 +476,7 @@ dsub \
   --project $PROJECT_ID \
   --preemptible \
   --zones $ZONE_ID \
-  --image $DOCKER_IMAGE \
+  --image ${DOCKER_GCP} \
   --logging gs://$OUTPUT_B/logging/ \
   --command 'gsutil rm ${SAM}' \
   --tasks sam_to_bq.tsv \
@@ -517,7 +504,7 @@ dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
-  --image $DOCKER_IMAGE \
+  --image ${DOCKER_GCP} \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
   --command 'bq --location=US load \
@@ -536,8 +523,6 @@ dsub \
 # Filter out the SNPs that are not within 500bp of a CpG that is at least 10x covered.
 # This removes about 5% of SNPs. Takes ~30min
 
-# REMOVE THE INNER JOIN WITH CPG SITES AS IT TAKES A LONG TIME TO REMOVE JUST 5 PC
-
 # Prepare TSV file
 echo -e "--env SAMPLE" > clean_vcf.tsv
 
@@ -545,12 +530,11 @@ while read SAMPLE ; do
   echo -e "$SAMPLE" >> clean_vcf.tsv
 done < sample_id.txt
 
-
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
-  --image $DOCKER_IMAGE \
+  --image ${DOCKER_GCP} \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
@@ -579,7 +563,7 @@ dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
-  --image $DOCKER_IMAGE \
+  --image ${DOCKER_GCP} \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
@@ -588,12 +572,12 @@ dsub \
   --wait
 
 # Merge all chromosome files into a single file per sample 
-# and delete the chromosome file
+# and delete the individual chromosome files
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
-  --image $DOCKER_IMAGE \
+  --image ${DOCKER_GCP} \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
@@ -607,16 +591,86 @@ dsub \
 
 
 
-########################## Tag each read with REF or ALT ##################
+########################## Tag each read with REF or ALT and then
+########################## each pair of SNP and CpG     ##################
 
 # We consider the cases where there are 1, 3, and 5 numbers in the CIGAR string
 # We leave out the 0.00093% where the CIGAR string has 7 numbers or more
-# Note: 0.2% of SNPs are left out.
+# Note: 0.05% of SNPs are left out when the SNP is at the last position of the read.
+
+# Prepare TSV file
+echo -e "--env SAMPLE" > genotype.tsv
+
+while read SAMPLE ; do
+    echo -e "${SAMPLE}" >> genotype.tsv
+done < sample_id.txt
+
+# Tag the read
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --image ${DOCKER_GCP} \
+  --logging gs://$OUTPUT_B/logging/ \
+  --env OUTPUT_B="${OUTPUT_B}" \
+  --env DATASET_ID="${DATASET_ID}" \
+  --env PROJECT_ID="${PROJECT_ID}" \
+  --script ${SCRIPTS}/read_genotype.sh \
+  --tasks genotype.tsv \
+  --wait
+
+# Tag the pair (CpG, snp) with REF or ALT
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --image ${DOCKER_GCP} \
+  --logging gs://$OUTPUT_B/logging/ \
+  --env OUTPUT_B="${OUTPUT_B}" \
+  --env DATASET_ID="${DATASET_ID}" \
+  --env PROJECT_ID="${PROJECT_ID}" \
+  --script ${SCRIPTS}/cpg_genotype.sh \
+  --tasks genotype.tsv \
+  --wait
+
+########################## Calculate ASM at the single CpG level ##################
 
 
-96% are a perfect match
-they all start with M
-2.5% of (snp,read_id) need to deal with the CIGAR
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --disk-size 50 \
+  --machine-type n1-standard-4 \
+  --image ${DOCKER_PYTHON} \
+  --logging gs://$OUTPUT_B/logging/ \
+  --input CPG_GENOTYPE="gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_cpg_genotype.csv" \
+  --output CPG_ASM="gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_cpg_asm.csv" \
+  --script ${SCRIPTS}/asm_single_cpg.py \
+  --wait
+
+
+
+dsub \
+  --provider local \
+  --image ${DOCKER_PYTHON} \
+  --logging gs://$OUTPUT_B/logging/ \
+  --input CPG_GENOTYPE="gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_cpg_genotype.csv" \
+  --output CPG_ASM="gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_cpg_asm.csv" \
+  --script ${SCRIPTS}/asm_single_cpg.py \
+  --wait
+
+  
+
+#  --tasks genotype.tsv \
+
+
+####################### Find REF AND ALT  at the CpG level for all SNPs ####################################
+
+
+
+
+
 
 ########################## Split the variants in 200 shards ################################
 
@@ -635,7 +689,7 @@ they all start with M
 #   --provider google-v2 \
 #   --project $PROJECT_ID \
 #   --zones $ZONE_ID \
-#   --image $DOCKER_IMAGE \
+#   --image $DOCKER_GENOMICS \
 #   --logging gs://$OUTPUT_B/logging/ \
 #   --command 'split -l 200 \
 #                 --numeric-suffixes --suffix-length=6 \
@@ -659,7 +713,7 @@ they all start with M
 #   --zones $ZONE_ID \
 #   --machine-type n1-standard-4 \
 #   --disk-size 20 \
-#   --image $DOCKER_IMAGE \
+#   --image $DOCKER_GENOMICS \
 #   --logging gs://$OUTPUT_B/logging/ \
 #   --input BAM_BAI="gs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.ba*" \
 #   --input SNP_LIST="gs://$OUTPUT_B/$SAMPLE/variant_shards/split-1-of-50_${SAMPLE}_chr${CHR}.txt" \
