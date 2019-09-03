@@ -3,7 +3,6 @@ FROM google/cloud-sdk:255.0.0
 ## To create the image on Cloud Build: gcloud builds submit --timeout "1h" --tag gcr.io/hackensack-tyco/wgbs-asm
 
 RUN apt-get update -y 
-# We do NOT upgrade: apt-get upgrade -y
 RUN apt-get install build-essential -y
 
 # Convenient text editor
@@ -62,17 +61,6 @@ ENV PATH="${PACKAGES}/FastQC:${PATH}"
 
 # Gives rights to call the packages
 RUN chmod -R 777 $PACKAGES
-
-####################  INSTALL R  ######################
-
-# Install R 
-RUN apt-get install r-base r-base-dev -y
-
-# Multi-thread for linear operations in R
-RUN apt-get install libatlas3-base -y
-
-# R packages used by scripts
-RUN su - -c "R -e \"install.packages('data.table', repos='http://cran.rstudio.com/')\""
 
 ##################### INSTALLATION END #####################
 

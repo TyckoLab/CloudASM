@@ -9,6 +9,4 @@ RUN pip install pandas
 # Statistics module for Python
 RUN pip install scipy
 
-# Pandas 
-
 CMD ["date"]
