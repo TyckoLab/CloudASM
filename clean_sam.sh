@@ -12,11 +12,12 @@ bq query \
             read_start + BYTE_LENGTH(seq) -1 AS read_end,
             length AS insert_length,
             BYTE_LENGTH(seq) AS seq_length,
+            -- CT_strand is read 1 and GA_strand is read 2
             IF(REGEXP_CONTAINS(genome_strand, 'CT'), TRUE, FALSE) AS CT_strand,
             IF(REGEXP_CONTAINS(genome_strand, 'GA'), TRUE, FALSE) AS GA_strand,
             cigar,
-            IF(REGEXP_CONTAINS(read_strand, 'CT'), 'READ_1','READ_2') AS insert_read,
-            seq
+            seq,
+            score_before_recal
         FROM
             ${DATASET_ID}.${SAMPLE}_recal_sam_raw
         "

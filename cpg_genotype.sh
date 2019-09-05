@@ -17,7 +17,7 @@ bq query \
                 allele 
             FROM ${DATASET_ID}.${SAMPLE}_vcf_reads_genotype
         ),
-        -- create a table with each combination of snp, CpG, REF, ALT
+        -- create a table with each combination of snp, CpG, read_id, REF, ALT
         COMBINED AS (
             SELECT * FROM CONTEXT
             INNER JOIN GENOTYPE 

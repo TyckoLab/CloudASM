@@ -523,8 +523,15 @@ dsub \
 ########################## Clean each VCF (one per chromosome) %=##################
 
 # Filter out the SNPs that are not within 500bp of a CpG that is at least 10x covered.
-# This removes about 5% of SNPs. Takes ~30min
+# This removes about 5% of SNPs. Takes ~30min for the small chr.
+# Finds out where the SNP can be found with no ambiguity (CT, GA, or both)
 
+# Delete potentially old big query tables 
+while read SAMPLE ; do
+  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf
+done < sample_id.txt
+
+# Clean the VCF -- create temporary tables (one per chr)
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -534,25 +541,33 @@ dsub \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
   --script ${SCRIPTS}/clean_vcf.sh \
-  --tasks all_samples.tsv \
+  --tasks all_chr.tsv \
   --wait
 
-# Merge all VCFs together
- 
+# Append all temporary VCFs together into one single clean VCF
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --image ${DOCKER_GCP} \
+  --logging gs://$OUTPUT_B/logging/ \
+  --env DATASET_ID="${DATASET_ID}" \
+  --env PROJECT_ID="${PROJECT_ID}" \
+  --command 'bq cp \
+               --append_table \
+               ${DATASET_ID}.${SAMPLE}_vcf_chr${CHR}_tmp \
+               ${DATASET_ID}.${SAMPLE}_vcf \
+             && bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_chr${CHR}_tmp' \
+  --tasks all_chr.tsv \
+  --wait
 
 
 
 ########################## Find the read IDs that overlap the snp ##################
 
-# Prepare TSV file
-echo -e "--env SAMPLE\t--env CHR" > reads_overlap_snp.tsv
 
+# Delete all files to be replaced
 while read SAMPLE ; do
-  for CHR in `seq 21 22`  ; do 
-    echo -e "${SAMPLE}\t${CHR}" >> reads_overlap_snp.tsv
-  done
-  
-  # Delete existing SAM on big query
   bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_reads  
 
 done < sample_id.txt
@@ -567,7 +582,7 @@ dsub \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
   --script ${SCRIPTS}/reads_overlap_snp.sh \
-  --tasks reads_overlap_snp.tsv \
+  --tasks all_chr.tsv \
   --wait
 
 # Merge all chromosome files into a single file per sample 
@@ -585,7 +600,7 @@ dsub \
                ${DATASET_ID}.${SAMPLE}_vcf_reads_tmp_${CHR} \
                ${DATASET_ID}.${SAMPLE}_vcf_reads \
              && bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_reads_tmp_${CHR}' \
-  --tasks reads_overlap_snp.tsv \
+  --tasks all_chr.tsv \
   --wait
 
 

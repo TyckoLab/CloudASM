@@ -30,7 +30,8 @@ bq query \
                 pos - read_start + 1 AS snp_pos_in_read,
                 seq_CT_strand,
                 seq_GA_strand,
-                seq
+                seq,
+                score_before_recal
             FROM ${DATASET_ID}.${SAMPLE}_vcf_reads
         ),
         CIG_NUM AS (
@@ -99,7 +100,8 @@ bq query \
         snp_in_read,
         seq_CT_strand,
         seq_GA_strand,
-        read_id
+        read_id,
+        score_before_recal
     FROM THIRD_MATCH
     WHERE BYTE_LENGTH(snp_in_read) = 1 
     UNION ALL 
@@ -114,7 +116,8 @@ bq query \
         snp_in_read,
         seq_CT_strand,
         seq_GA_strand,
-        read_id
+        read_id,
+        score_before_recal
     FROM SECOND_MATCH
     -- We demand that a letter was found
     WHERE BYTE_LENGTH(snp_in_read) = 1 
@@ -130,7 +133,8 @@ bq query \
         snp_in_read,
         seq_CT_strand,
         seq_GA_strand,
-        read_id
+        read_id,
+        score_before_recal
     FROM FIRST_MATCH
     -- We demand that a letter was found
     WHERE BYTE_LENGTH(snp_in_read) = 1 

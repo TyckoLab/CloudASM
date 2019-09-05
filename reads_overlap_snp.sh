@@ -14,11 +14,9 @@ bq query \
             chr AS sequences_chr,
             CT_strand AS seq_CT_strand,
             GA_strand AS seq_GA_strand,
-            insert_length,
-            seq_length,
             cigar,
-            insert_read,
-            seq
+            seq,
+            score_before_recal
           FROM 
             ${DATASET_ID}.${SAMPLE}_recal_sam
           WHERE
@@ -31,29 +29,37 @@ bq query \
           pos,
           ref,
           alt,
-          cov,
           CT_strand,
           GA_strand
         FROM 
           ${DATASET_ID}.${SAMPLE}_vcf
         WHERE 
             chr = '${CHR}'
+      ),
+      VARIANTS_SEQUENCES AS (
+        SELECT * FROM variants
+        INNER JOIN
+          sequences ON
+            sequences.read_start <= pos
+            AND sequences.read_end >= pos
+            AND sequences.sequences_chr = chr
+            AND (sequences.seq_CT_strand = CT_strand OR sequences.seq_GA_strand = GA_strand)
       )
-      SELECT *
-      FROM 
-        variants
-      INNER JOIN
-        sequences ON
-          sequences.read_start <= pos
-          AND sequences.read_end >= pos
-          AND sequences.sequences_chr = chr
-          AND (sequences.seq_CT_strand = CT_strand OR sequences.seq_GA_strand = GA_strand)
+      SELECT 
+        snp_id,
+        chr,
+        pos,
+        ref,
+        alt,
+        read_start,
+        read_end,
+        CT_strand,
+        GA_strand,
+        seq_CT_strand,
+        seq_GA_strand,
+        cigar,
+        read_id,
+        seq,
+        score_before_recal
+      FROM VARIANTS_SEQUENCES
     "
-
-# # Save the table in Google Cloud Storage
-
-# bq extract \
-#     --field_delimiter "," \
-#     --print_header=true \
-#     ${DATASET_ID}.${SAMPLE}_vcf_reads_tmp_${CHR} \
-#     gs://$OUTPUT_B/$SAMPLE/tmp/${SAMPLE}_vcf_reads_tmp_${CHR}.vcf

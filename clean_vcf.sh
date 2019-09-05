@@ -3,7 +3,7 @@
 # Create a table with a min coverage of 10x per variant and a 500bp window
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf \
+    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_chr${CHR}_tmp \
     --replace=true \
     "WITH
       -- We create a file with a 500bp window around the SNP and calculate the cov of the SNP
@@ -15,15 +15,18 @@ bq query \
           SAFE_CAST(pos AS INT64) + 250 AS sup_500,
           ref,
           alt,
-          SAFE_CAST(REGEXP_EXTRACT(info,'DP=(.+);M') as INT64) as cov,
           SAFE_CAST(pos as INT64) as pos
         FROM 
           ${DATASET_ID}.${SAMPLE}_vcf_raw
         WHERE
+          -- demand that the SNP is like rs-
           snp_id LIKE '%rs%'
+          -- demand that we're deadling with a single nucleotide in REF and ALT columns
           AND BYTE_LENGTH(ref) = 1
           AND BYTE_LENGTH(alt) = 1
+          -- below, we extract the coverage and demand that is it at least 10
           AND SAFE_CAST(REGEXP_EXTRACT(info,'DP=(.+);M') as INT64) >= 10
+          AND chr = '${CHR}'
         ),
       cpg_pos AS (
         SELECT
@@ -32,10 +35,12 @@ bq query \
           pos AS sup_cpg_pos
         FROM
           ${DATASET_ID}.${SAMPLE}_context
+        WHERE
+          chr = '${CHR}'
         GROUP BY
           chr, pos
         )
-  -- We make sure that there is at least a CpG that is 10x covered within 500bp of the SNP
+  -- We make sure that there is at least a variant that is 10x covered within 500bp of a CpG
   -- since there are several CpG that may qualify we keep the distinct results
   SELECT DISTINCT 
     snp_id,
@@ -43,7 +48,6 @@ bq query \
     pos,
     ref,
     alt,
-    cov,
     -- below, we indicate on which genome strand the SNP REF/ALT could be observed 
     -- with no ambiguity in a bisulfite converted sequence
     IF (ref = 'G' AND alt = 'A', TRUE,
