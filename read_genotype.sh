@@ -153,6 +153,7 @@ bq query \
         snp_id,
         snp_score,
         chr,
+        pos,
         read_id,
         if (snp_in_read = ref, 'REF', if (snp_in_read = alt, 'ALT', 'bad_snp')) AS allele
       FROM 
@@ -166,6 +167,7 @@ bq query \
             snp_id,
             snp_score,
             chr,
+            pos,
             read_id,
             if (snp_in_read = ref 
                 OR (ref = 'C' AND seq_CT_strand = TRUE AND snp_in_read = 'T') 

@@ -13,6 +13,7 @@ bq query \
         GENOTYPE AS (
             SELECT 
                 snp_id,
+                pos AS snp_pos,
                 read_id AS geno_read_id,
                 allele 
             FROM ${DATASET_ID}.${SAMPLE}_vcf_reads_genotype
@@ -22,6 +23,9 @@ bq query \
             SELECT * FROM CONTEXT
             INNER JOIN GENOTYPE 
             ON read_id = geno_read_id
+           -- we ask that no CpG overlap a snp on the C or the G
+            AND snp_pos != pos
+            AND snp_pos != pos + 1
         ),
         -- we remove the extra columns in CLEAN
         CLEAN AS (
@@ -72,8 +76,6 @@ bq query \
         ref_meth,
         alt_cov,
         alt_meth
-       -- ref_meth - alt_meth AS m_ref_minus_alt,
-       -- ROUND(SAFE_DIVIDE(ref_meth - alt_meth,ref_meth+alt_meth),3) AS meth_perc
     FROM REF_AND_ALT
     -- we require that each allele is covered 5x
     WHERE ref_cov >=5 AND alt_cov >= 5

@@ -630,6 +630,8 @@ dsub \
   --wait
 
 # Tag the pair (CpG, snp) with REF or ALT
+# we remove CpGs overlapping a snp on the C or the G
+# we remove CpG that do not have at least 5x on both ref and alt
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
