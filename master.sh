@@ -612,6 +612,9 @@ dsub \
 # We leave out the 0.00093% where the CIGAR string has 7 numbers or more
 # Note: 0.05% of SNPs are left out when the SNP is at the last position of the read.
 
+# We also remove the reads where the score of the nucleotide with the SNP is below 30
+# This removes ~ 7% of the reads.
+
 # Tag the read
 dsub \
   --provider google-v2 \

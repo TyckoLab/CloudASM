@@ -10,9 +10,6 @@ bq query \
             chr,
             read_start,
             read_start + BYTE_LENGTH(seq) -1 AS read_end,
-            length AS insert_length,
-            BYTE_LENGTH(seq) AS seq_length,
-            -- CT_strand is read 1 and GA_strand is read 2
             IF(REGEXP_CONTAINS(genome_strand, 'CT'), TRUE, FALSE) AS CT_strand,
             IF(REGEXP_CONTAINS(genome_strand, 'GA'), TRUE, FALSE) AS GA_strand,
             cigar,
@@ -22,3 +19,7 @@ bq query \
             ${DATASET_ID}.${SAMPLE}_recal_sam_raw
         "
 
+
+
+## Note the read_strand in the SAM indicates if it is read #1 (CT) or read #2 (GA),
+## not to be confused with the genome_strand, which we use in the genotyping.
