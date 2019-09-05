@@ -56,6 +56,7 @@ bq query \
                 IF (ref = 'T' AND alt = 'C', TRUE, TRUE)))) AS GA_strand 
   FROM
      variants
+  -- Making sure that there are CpG within 500bp of the SNP
   INNER JOIN
     cpg_pos ON
       cpg_pos.chr_cpg_pos = chr

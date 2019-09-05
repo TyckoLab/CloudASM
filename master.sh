@@ -633,7 +633,9 @@ dsub \
   --tasks cpg_asm.tsv \
   --wait
 
-# Import the file back into Big Query
+# Find the CpGs that define the DMR and remove the SNPs that do not have 
+# at least 3 significative CpGs in the same direction 
+# Remove SNPs that have only 1 or 2 CpGs
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -642,74 +644,27 @@ dsub \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
-  --command 'bq --location=US load \
-               --replace=true \
-               --source_format=CSV \
-               --field_delimiter "," \
-                ${DATASET_ID}.${SAMPLE}_cpg_asm \
-               gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_cpg_asm.csv \
-               chr:STRING,pos:INTEGER,snp_id:INTEGER,ref_cov:INTEGER,ref_meth:INTEGER,alt_cov:INTEGER,alt_meth:INTEGER,fisher_pvalue:FLOAT' \
+  --script ${SCRIPTS}/dmr.sh \
   --tasks all_samples.tsv \
   --wait
 
-#  --tasks genotype.tsv \
+# There are between 1 and 50 CpGs by snp_id
 
 
-####################### Find REF AND ALT  at the CpG level for all SNPs ####################################
+###################
+
+IMPROVEMENTS:
+
+1/
+REMOVE THE CPG WHERE C OR G OVERLAP ANY SNP THAT WAS CALLED.
+
+2/
+OPTION TO FILTER ON NUCLEOTIDE QUALITY FROM THE SCORE BEFORE RECAL
 
 
 
+3/
+call in
 
 
-
-########################## Split the variants in 200 shards ################################
-
-# We use the 500bp window created above to qualify for "near"
-
-# Prepare TSV file
-# echo -e "--env SAMPLE\t--env CHR\t--input VARIANTS_CHR\t--output OUTPUT_DIR" > variant_list.tsv
-
-# while read SAMPLE ; do
-#   for CHR in `seq 1 22` X Y ; do 
-#   echo -e "${SAMPLE}\t${CHR}\tgs://${OUTPUT_B}/${SAMPLE}/variants_per_chr/${SAMPLE}_chr${CHR}_variants.txt\tgs://$OUTPUT_B/${SAMPLE}/variant_shards/*" >> variant_list.tsv
-#   done
-# done < sample_id.txt
-
-# dsub \
-#   --provider google-v2 \
-#   --project $PROJECT_ID \
-#   --zones $ZONE_ID \
-#   --image $DOCKER_GENOMICS \
-#   --logging gs://$OUTPUT_B/logging/ \
-#   --command 'split -l 200 \
-#                 --numeric-suffixes --suffix-length=6 \
-#                 --additional-suffix=.txt \
-#                 ${VARIANTS_CHR}\
-#                 $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_variants_' \
-#   --tasks variant_list.tsv \
-#   --wait
-
-########################## Create a pair of (REF, ALT) of each BAM for each combination [SAM, snp shard] ################################
-
-# Need SNP ID, chr, position, window of 2000 centered on SNP.
-#100,000 SNP x 54 in chr 1
-
-# SAMPLE="gm12878"
-# CHR="22"
-
-# dsub \
-#   --provider google-v2 \
-#   --project $PROJECT_ID \
-#   --zones $ZONE_ID \
-#   --machine-type n1-standard-4 \
-#   --disk-size 20 \
-#   --image $DOCKER_GENOMICS \
-#   --logging gs://$OUTPUT_B/logging/ \
-#   --input BAM_BAI="gs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.ba*" \
-#   --input SNP_LIST="gs://$OUTPUT_B/$SAMPLE/variant_shards/split-1-of-50_${SAMPLE}_chr${CHR}.txt" \
-#   --input VCF="gs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}.vcf" \
-#   --output OUTPUT_FOLDER="gs://$OUTPUT_B/$SAMPLE/genotype/*" \
-#   --script ${SCRIPTS}/genotype.sh \
-#   --tasks genotype.tsv \
-#   --wait
 
