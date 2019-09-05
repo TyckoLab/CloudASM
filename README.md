@@ -127,3 +127,19 @@ RUN gsutil -m cp -r gs://ref_genomes/grc37 /ref_genome
 # Variant database (dbSNP150)
 RUN gsutil -m cp gs://ref_genomes/dbSNP150_grc37_GATK/no_chr_dbSNP150_GRCh37.vcf /ref_genome
 
+
+
+
+Important stuff
+- we filter out the reads where the confidence in the SNP letter is less than 30
+- we remove CpGs from the context file where the C or G overlap with the SNP
+- we remove all SNPs that are not within 500 bp of at least a CpG
+
+
+DMR: 
+3 significant ASM CpG in the same direction
+2 consecutive significant CpGs in the same direction
+at least 20% difference between the REF reads and the ALT reads and FDR < 0.05
+
+Bis-SNP reports SNPs in positive strand of the reference genome (it's NOT bisulfite-converted)
+Bismark reports in positive strand but it is bisulfite-converted, requiring careful handling of the Bis-SNP variant call data.

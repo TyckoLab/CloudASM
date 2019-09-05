@@ -179,6 +179,7 @@ bq query \
         WHERE 
             CT_strand = TRUE AND GA_STRAND = TRUE
     ),
+    -- remove the SNPs that could be not be identified for sure.
     ALL_SNP AS (
         SELECT * FROM BOTH_STRANDS WHERE allele != 'bad_snp'
         UNION ALL

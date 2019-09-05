@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Create a table with a min coverage of 10x per variant and a 500bp window
+# Create a table with a variant near a CpG in a 500bp window
 bq query \
     --use_legacy_sql=false \
     --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_chr${CHR}_tmp \
@@ -25,7 +25,6 @@ bq query \
           AND BYTE_LENGTH(ref) = 1
           AND BYTE_LENGTH(alt) = 1
           -- below, we extract the coverage and demand that is it at least 10
-          AND SAFE_CAST(REGEXP_EXTRACT(info,'DP=(.+);M') as INT64) >= 10
           AND chr = '${CHR}'
         ),
       cpg_pos AS (
