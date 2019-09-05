@@ -51,6 +51,17 @@ while read SAMPLE ; do
     echo -e "${SAMPLE}" >> all_samples.tsv
 done < sample_id.txt
 
+# Prepare TSV file per chromosome (used for many jobs)
+echo -e "--env SAMPLE\t--env CHR" > all_chr.tsv
+
+while read SAMPLE ; do
+  for CHR in `seq 1 22` X Y ; do
+    echo -e "${SAMPLE}\t${CHR}" >> all_chr.tsv
+  done
+done < sample_id.txt
+
+
+
 
 ########################## Unzip, rename, and split fastq files ################################
 
@@ -509,7 +520,7 @@ dsub \
   --tasks vcf_to_bq.tsv \
   --wait
 
-########################## Clean each VCF (one per sample) %=##################
+########################## Clean each VCF (one per chromosome) %=##################
 
 # Filter out the SNPs that are not within 500bp of a CpG that is at least 10x covered.
 # This removes about 5% of SNPs. Takes ~30min
@@ -525,6 +536,10 @@ dsub \
   --script ${SCRIPTS}/clean_vcf.sh \
   --tasks all_samples.tsv \
   --wait
+
+# Merge all VCFs together
+ 
+
 
 
 ########################## Find the read IDs that overlap the snp ##################
