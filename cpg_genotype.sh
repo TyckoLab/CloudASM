@@ -23,9 +23,6 @@ bq query \
             SELECT * FROM CONTEXT
             INNER JOIN GENOTYPE 
             ON read_id = geno_read_id
-           -- we ask that no CpG overlap a snp on the C or the G
-            AND snp_pos != pos
-            AND snp_pos != pos + 1
         ),
         -- we remove the extra columns in CLEAN
         CLEAN AS (
@@ -67,21 +64,70 @@ bq query \
             ON chr = chr_alt AND 
                 pos = pos_alt AND
                 snp_id = snp_id_alt
+        ),
+        REF_AND_ALT_CLEAN AS (
+            SELECT 
+                chr,
+                pos,
+                snp_id,
+                ref_cov,
+                ref_meth,
+                alt_cov,
+                alt_meth
+            FROM REF_AND_ALT
+            -- we require that each allele is covered 5x
+            WHERE ref_cov >=5 AND alt_cov >= 5
+        ),
+        ----------------------------------------------------------
+        -- keep CpG that where the C does not overlap with any SNP
+        ----------------------------------------------------------
+        CPG_NO_SNP_ON_C AS (
+            SELECT chr,pos 
+                FROM REF_AND_ALT_CLEAN
+            EXCEPT DISTINCT
+            SELECT chr,pos 
+                FROM ${DATASET_ID}.${SAMPLE}_vcf_reads_genotype
+        ),
+        CPG_NO_SNP_ON_C_AND_G AS (
+            SELECT chr,pos 
+                FROM CPG_NO_SNP_ON_C
+            EXCEPT DISTINCT
+            SELECT chr, pos - 1 AS pos 
+                FROM ${DATASET_ID}.${SAMPLE}_vcf_reads_genotype
+        ),
+        REF_AND_ALT_CLEAN_FORMATED AS (
+            SELECT
+                chr AS chr_tmp,
+                pos AS pos_tmp,
+                snp_id,
+                ref_cov,
+                ref_meth,
+                alt_cov,
+                alt_meth
+            FROM REF_AND_ALT_CLEAN 
+        ),
+        CPG_GENOTYPE AS (
+            SELECT * 
+                FROM CPG_NO_SNP_ON_C_AND_G 
+            INNER JOIN 
+            REF_AND_ALT_CLEAN_FORMATED
+            ON chr = chr_tmp AND pos = pos_tmp
         )
-    SELECT 
-        chr,
-        pos,
-        snp_id,
-        ref_cov,
-        ref_meth,
-        alt_cov,
-        alt_meth
-    FROM REF_AND_ALT
-    -- we require that each allele is covered 5x
-    WHERE ref_cov >=5 AND alt_cov >= 5
+        SELECT
+            chr,
+            pos,
+            snp_id,
+            ref_cov,
+            ref_meth,
+            alt_cov,
+            alt_meth
+            FROM CPG_GENOTYPE
     "
 
 # Save file in bucket to use it in a Python script to compute a Fisher exact test
+
+
+
 
 bq extract \
     --field_delimiter "," \
