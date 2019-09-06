@@ -125,10 +125,6 @@ bq query \
     "
 
 # Save file in bucket to use it in a Python script to compute a Fisher exact test
-
-
-
-
 bq extract \
     --field_delimiter "," \
     --print_header=true \
