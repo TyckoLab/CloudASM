@@ -675,6 +675,9 @@ dsub \
 # Find the CpGs that define the DMR and remove the SNPs that do not have 
 # at least 3 significative CpGs in the same direction 
 # Remove SNPs that have only 1 or 2 CpGs
+
+# Requesting at least 3 CpGs removes 50% of SNPs.
+
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -691,12 +694,6 @@ dsub \
 
 
 ###################
-
-IMPROVEMENTS:
-
-1/
-REMOVE THE CPG WHERE C OR G OVERLAP ANY SNP THAT WAS CALLED.
-
 
 
 

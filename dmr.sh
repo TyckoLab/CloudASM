@@ -13,12 +13,12 @@ bq --location=US load \
 
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_cpg_genotype \
+    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_tmp\
     --replace=true \
     "WITH 
         NB_CPG_PER_SNP AS (
             SELECT snp_id, COUNT(*) AS nb_cpg
-            FROM ${DATASET_ID}.${SAMPLE} 
+            FROM ${DATASET_ID}.${SAMPLE}_cpg_asm
             GROUP BY snp_id 
             ),
         -- all SNPS with at least 3 CpGs with ASM. They may not be significant
@@ -26,4 +26,10 @@ bq query \
             SELECT * FROM NB_CPG_PER_SNP
             WHERE nb_cpg >=3
         )
+        SELECT * FROM SNP_WITH_POTENTIAL_DMR
     "
+
+# WITH TEST AS (
+#   SELECT  *  FROM `hackensack-tyco.wgbs_asm.gm12878_cpg_asm` 
+#   )
+#  SELECT TO_JSON_STRING(TEST) FROM TEST
