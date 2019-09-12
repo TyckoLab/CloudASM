@@ -198,7 +198,7 @@ bq query \
 
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_genotype \
+    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_snp_genotype \
     --replace=true \
     "
     WITH 

@@ -11,6 +11,10 @@ bq --location=US load \
                chr:STRING,pos:INTEGER,snp_id:STRING,ref_cov:INTEGER,ref_meth:INTEGER,alt_cov:INTEGER,alt_meth:INTEGER,fisher_pvalue:FLOAT
 
 
+# Delete SAMPLE_cpg_genotype (the new file sample_cpg_asm has the same information and the ASM p-value)
+bq rm -f -t ${DATASET_ID}.${SAMPLE}_cpg_genotype
+
+# Query to select the SNPs with at least 3 significant CpGs in the same direction
 bq query \
     --use_legacy_sql=false \
     --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_snp_for_dmr\
@@ -40,31 +44,11 @@ bq query \
                 (SELECT MAX(pos) FROM UNNEST(cpg) WHERE fisher_pvalue < 0.05) AS max_cpg,
                 cpg
             FROM DMR_BOUNDS
-        )
+        ),
+        -- INTERSECT WITH THE LIST OF CPGS WHERE WE HAVE THE SNP AND READ_ID, AND ALLELE
        -- SELECT snp_id AS snp_id_for_dmr, chr, nb_cpg, min_cpg, max_cpg FROM DMR_LIST WHERE pos_sig_cpg >=3 OR neg_sig_cpg >=3
         SELECT * FROM DMR_LIST
     "
 
-# WITH TEST AS (
-#   SELECT  *  FROM `hackensack-tyco.wgbs_asm.gm12878_cpg_asm` 
-#   )
-#  SELECT TO_JSON_STRING(TEST) FROM TEST
-
-
-
-Wilcoxon from ASM script
-
-
-        # Create an array with chr #, snp ID, first cpg, last cpg
-        summary.snp = byread.snp[!duplicated(byread.snp$snp_id), c(2, 6, 4:5)]
-
-        # Add two columns with the average methylation per haplotype 
-        summary.snp$avg_meth_read_ref = avg.methyl.per.hapl[which(avg.methyl.per.hapl$haplotype == "ref"), 1]
-        summary.snp$avg_meth_read_alt = avg.methyl.per.hapl[which(avg.methyl.per.hapl$haplotype == "alt"), 1]
-        
-        # Calculate the difference in the average methylation per haplotype (ALT - REF)
-        summary.snp$diff_alt_ref = summary.snp$avg_meth_read_alt - summary.snp$avg_meth_read_ref
-        
-        summary.snp$wilcox = wilcox.test(meth_per_read ~ haplotype, data = byread.snp)$p.value
-
-Compute av. methylation (not av. methylation %) across all CpGs between the 2 significant one
+# Intersect this list of SNPs with the the CpG files (sample_cpg_read_genotype)
+# The goal is to create a table where each SNP comes with an array

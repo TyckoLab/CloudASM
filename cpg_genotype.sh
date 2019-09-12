@@ -2,7 +2,7 @@
 
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_cpg_genotype \
+    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_cpg_read_genotype \
     --replace=true \
     "
     WITH 
@@ -23,9 +23,8 @@ bq query \
             SELECT * FROM CONTEXT
             INNER JOIN GENOTYPE 
             ON read_id = geno_read_id
-        ),
-        -- we remove the extra columns in CLEAN
-        CLEAN AS (
+        )
+        -- we remove the extra columns
             SELECT 
                 chr, 
                 pos,
@@ -35,6 +34,17 @@ bq query \
                 allele,
                 read_id
             FROM COMBINED
+        "
+
+
+bq query \
+    --use_legacy_sql=false \
+    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_cpg_genotype \
+    --replace=true \
+        "
+        WITH 
+        CLEAN AS (
+            SELECT * FROM ${DATASET_ID}.${SAMPLE}_cpg_read_genotype
         ),
         REF_ALLELES AS (
             SELECT 
