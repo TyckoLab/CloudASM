@@ -21,7 +21,8 @@ bq query \
     --replace=true \
     "
     WITH 
-        DMR_BOUNDS AS (
+    -- SNPs with their respective arrays of CpGs (each coming with their fisher p-value)
+        SNP_CPG_ARRAY AS (
             SELECT
                 snp_id,
                 ANY_VALUE(chr) AS chr,
@@ -33,22 +34,95 @@ bq query \
             FROM ${DATASET_ID}.${SAMPLE}_cpg_asm
             GROUP BY snp_id
         ),
-        DMR_LIST AS (
-            SELECT snp_id, 
+        -- Extract the number of CpG per SNP 
+        SNP_DETAILS AS (
+            SELECT 
+                snp_id, 
                 chr, 
                 ARRAY_LENGTH(cpg) AS nb_cpg, 
                 (SELECT COUNT(fisher_pvalue) FROM UNNEST(cpg) WHERE fisher_pvalue < 0.05) AS nb_sig_cpg, 
                 (SELECT COUNT(fisher_pvalue) FROM UNNEST(cpg) WHERE fisher_pvalue < 0.05 AND SIGN(alt_minus_ref) = 1) AS pos_sig_cpg,
                 (SELECT COUNT(fisher_pvalue) FROM UNNEST(cpg) WHERE fisher_pvalue < 0.05 AND SIGN(alt_minus_ref) = -1) AS neg_sig_cpg, 
                 (SELECT MIN(pos) FROM UNNEST(cpg) WHERE fisher_pvalue < 0.05) AS min_cpg,
-                (SELECT MAX(pos) FROM UNNEST(cpg) WHERE fisher_pvalue < 0.05) AS max_cpg,
-                cpg
-            FROM DMR_BOUNDS
+                (SELECT MAX(pos) FROM UNNEST(cpg) WHERE fisher_pvalue < 0.05) AS max_cpg
+            FROM SNP_CPG_ARRAY
+        ),
+        -- Select SNPs where there are at least 3 significant CpGs in the same direction
+        -- At this point, we're left with 2% of SNPs.
+        SNP_FOR_DMR AS (
+            SELECT
+                snp_id AS snp_id_dmr, 
+                chr AS chr_dmr,
+                min_cpg,
+                max_cpg
+            FROM SNP_DETAILS
+            WHERE 
+                pos_sig_cpg >=3 
+                OR neg_sig_cpg >=3
+        ),
+        -- Import the list of CpGs with their respective snp_id, read_id, and allele
+        CPG_LIST AS (
+            SELECT * FROM ${DATASET_ID}.${SAMPLE}_cpg_read_genotype
         ),
         -- INTERSECT WITH THE LIST OF CPGS WHERE WE HAVE THE SNP AND READ_ID, AND ALLELE
-       -- SELECT snp_id AS snp_id_for_dmr, chr, nb_cpg, min_cpg, max_cpg FROM DMR_LIST WHERE pos_sig_cpg >=3 OR neg_sig_cpg >=3
-        SELECT * FROM DMR_LIST
+        SNP_AND_READID AS (
+            SELECT * FROM SNP_FOR_DMR
+            INNER JOIN CPG_LIST
+            ON snp_id = snp_id_dmr AND chr = chr_dmr
+        ),
+        QUALIFYING_CPG AS (
+        -- All CpGs that are located within the boundaries of the potential DMR
+        -- This removes 1/3 of all CpGs.
+            SELECT 
+                chr, 
+                pos, 
+                meth, 
+                cov, 
+                snp_id, 
+                allele, 
+                read_id 
+            FROM SNP_AND_READID
+            WHERE 
+                pos >= min_cpg 
+                AND pos <= max_cpg
+        ),
+        -- Compute the methylation % per read_id, per snp_id
+        METHYL_PER_READ AS (
+            SELECT 
+                snp_id,
+                read_id,
+                allele,
+                ROUND(SAFE_DIVIDE(SUM(meth),SUM(cov)),5) AS methyl
+            FROM QUALIFYING_CPG
+            GROUP BY snp_id, read_id, allele, chr
+        ),
+        SNP_METHYL_ARRAY_REF AS (
+            SELECT
+                snp_id,
+                ARRAY_AGG(STRUCT(methyl)) AS ref
+            FROM METHYL_PER_READ
+            WHERE allele = 'REF'
+            GROUP BY snp_id
+        ),
+        SNP_METHYL_ARRAY_ALT AS (
+            SELECT
+                snp_id AS snp_id_alt,
+                ARRAY_AGG(STRUCT(methyl)) AS alt
+            FROM METHYL_PER_READ
+            WHERE allele = 'ALT'
+            GROUP BY snp_id
+        ),
+        SNP_METHYL_JOIN AS (
+            SELECT * FROM SNP_METHYL_ARRAY_REF
+            INNER JOIN SNP_METHYL_ARRAY_ALT
+            ON snp_id = snp_id_alt
+        )
+        SELECT 
+            snp_id, 
+            ARRAY_LENGTH(ref) AS ref_reads, 
+            ARRAY_LENGTH(alt) AS alt_reads,
+            ref, 
+            alt
+        FROM SNP_METHYL_JOIN
     "
 
-# Intersect this list of SNPs with the the CpG files (sample_cpg_read_genotype)
-# The goal is to create a table where each SNP comes with an array

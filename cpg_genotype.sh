@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# This file will be used to compute the DMRs
 bq query \
     --use_legacy_sql=false \
     --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_cpg_read_genotype \
@@ -36,7 +37,7 @@ bq query \
             FROM COMBINED
         "
 
-
+# This file will be used to compute single CPG ASM
 bq query \
     --use_legacy_sql=false \
     --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_cpg_genotype \
