@@ -693,7 +693,19 @@ dsub \
 # There are between 1 and 50 CpGs by snp_id
 
 
-###################
+########################## Calculate DMR ##################
+
+# Half of snps have one or two CpGs. We require at least 3.
 
 
 
+
+
+
+
+########################################################################################
+########################################################################################
+########################################################################################
+
+Delete sample_genotype
+delete sample_cpg_genotype and rename sample_cpg_asm with sample_cpg
