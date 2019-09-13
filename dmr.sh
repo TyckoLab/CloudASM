@@ -90,6 +90,7 @@ bq query \
         METHYL_PER_READ AS (
             SELECT 
                 snp_id,
+                chr,
                 read_id,
                 allele,
                 ROUND(SAFE_DIVIDE(SUM(meth),SUM(cov)),5) AS methyl
@@ -99,6 +100,7 @@ bq query \
         SNP_METHYL_ARRAY_REF AS (
             SELECT
                 snp_id,
+                ANY_VALUE(chr) AS chr,
                 ARRAY_AGG(STRUCT(methyl)) AS ref
             FROM METHYL_PER_READ
             WHERE allele = 'REF'
@@ -120,6 +122,7 @@ bq query \
         SNP_METHYL AS (
             SELECT 
                 snp_id, 
+                chr,
                 ARRAY_LENGTH(ref) AS ref_reads, 
                 ARRAY_LENGTH(alt) AS alt_reads,
                  ROUND(((SELECT AVG(methyl) FROM UNNEST(alt)) - (SELECT AVG(methyl) FROM UNNEST(ref))),3) AS effect,

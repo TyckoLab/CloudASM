@@ -139,10 +139,6 @@ bq extract \
 
 ########################## Delete most BQ files
 
-# Delete intermediary sets
-#bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_CpGOB
-#bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_CpGOT
-
 # Delete bedgraph files from BQ
 bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_both_context_tmp
 bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_methyperc_bedgraph

@@ -378,6 +378,23 @@ dsub \
   --wait
 
 
+# Delete raw CpGOB and CpGOT files from Big Query
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --preemptible \
+  --zones $ZONE_ID \
+  --image ${DOCKER_GCP} \
+  --logging gs://$OUTPUT_B/logging/ \
+  --env DATASET_ID="${DATASET_ID}" \
+  --command 'bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOB \
+             && bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOT' \
+  --tasks all_samples.tsv \
+  --wait
+
+
+
+
 ########################## Re-calibrate BAM  ################################
 
 # This step is required by the variant call Bis-SNP
@@ -478,7 +495,7 @@ dsub \
   --wait
 
 
-# Delete the SAM files from the bucket (they take a lot of space)
+# Delete the SAM files from the bucket (they take a lot of space) and the raw SAM files from Big Query
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -486,9 +503,13 @@ dsub \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
   --logging gs://$OUTPUT_B/logging/ \
-  --command 'gsutil rm ${SAM}' \
+  --env DATASET_ID="${DATASET_ID}" \
+  --command 'gsutil rm ${SAM} && bq rm -f -t ${DATASET_ID}.${SAMPLE}_recal_sam_raw' \
   --tasks sam_to_bq.tsv \
   --wait
+
+
+# Delete raw VCF file
 
 
 ########################## Export VCF to Big Query (one per sample) ################################
@@ -567,6 +588,17 @@ dsub \
   --tasks all_chr.tsv \
   --wait
 
+# Delete all raw VCF files from BigQuery
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --image ${DOCKER_GCP} \
+  --logging gs://$OUTPUT_B/logging/ \
+  --env DATASET_ID="${DATASET_ID}" \
+  --command 'bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_raw' \
+  --tasks all_samples.tsv \
+  --wait
 
 
 ########################## Find the read IDs that overlap the snp ##################
@@ -724,6 +756,11 @@ dsub \
 
 ########################## Provide a final list of DMRs ##################
 
+# Delete master file of all ASM across all samples
+while read SAMPLE ; do
+  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.asm_snp
+
+done < sample_id.txt
 
 dsub \
   --provider google-v2 \
@@ -738,3 +775,10 @@ dsub \
   --wait
 
 
+#################################################################
+#################################################################
+
+Rename gm12878_cpg_read_genotype in gm12878_cpg_genotype AND propagate
+
+# Needs to be a separate script
+Compute the background of HET in the genome (5x cov per allele and 3 CpGs total)

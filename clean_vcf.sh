@@ -66,4 +66,3 @@ bq query \
       AND cpg_pos.inf_cpg_pos >= inf_500
       AND cpg_pos.sup_cpg_pos <= sup_500
   "
-
