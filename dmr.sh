@@ -17,7 +17,7 @@ bq rm -f -t ${DATASET_ID}.${SAMPLE}_cpg_genotype
 # Query to select the SNPs with at least 3 significant CpGs in the same direction
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_snp_for_dmr\
+    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_snp_for_dmr \
     --replace=true \
     "
     WITH 
@@ -126,3 +126,9 @@ bq query \
         FROM SNP_METHYL_JOIN
     "
 
+# Export file to JSON format in the bucket
+# (nested arrays are not supported in)
+bq extract \
+    --destination_format NEWLINE_DELIMITED_JSON \
+    ${DATASET_ID}.${SAMPLE}_snp_for_dmr \
+    gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_snp_for_dmr.json
