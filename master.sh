@@ -1,6 +1,12 @@
 
 ########################## Variables ################################
 
+# Effect size required at the DMR level for an ASM.
+DMR_EFFECT="0.2"
+
+# Number of CpGs with ASM in the same direction that we require per DMR
+NB_CPG_SIG="3"
+
 # GCP global variables
 PROJECT_ID="hackensack-tyco"
 REGION_ID="us-central1"
@@ -672,11 +678,52 @@ dsub \
   --tasks cpg_asm.tsv \
   --wait
 
-# Find the CpGs that define the DMR and remove the SNPs that do not have 
-# at least 3 significative CpGs in the same direction 
-# Remove SNPs that have only 1 or 2 CpGs
 
-# Requesting at least 3 CpGs removes 50% of SNPs.
+########################## Constitute the DMRs ##################
+
+
+# Prepare TSV file
+echo -e "--input DMR\t--output DMR_PVALUE" > dmr.tsv
+
+while read SAMPLE ; do
+    echo -e "gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_snp_for_dmr.json\tgs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_dmr_pvalue.json" >> dmr.tsv
+done < sample_id.txt
+
+# Requesting 
+# 1/ at least NB_CPG_SIG CpGs with significative ASM and in the same direction per DMR 
+# 2/ a DMR_EFFECT difference between the REF and ALT (computed across reads) across CpGs that are located in between the two extreme significant CpGs
+# Removes ~50% of SNPs.
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --image ${DOCKER_GCP} \
+  --logging gs://$OUTPUT_B/logging/ \
+  --env DATASET_ID="${DATASET_ID}" \
+  --env OUTPUT_B="${OUTPUT_B}" \
+  --env DMR_EFFECT="${DMR_EFFECT}" \
+  --env NB_CPG_SIG="${NB_CPG_SIG}" \
+  --script ${SCRIPTS}/dmr.sh \
+  --tasks all_samples.tsv \
+  --wait
+
+
+# Compute Wilcoxon's p-value per DMR between the REF reads and the ALT reads
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --disk-size 30 \
+  --machine-type n1-standard-4 \
+  --image ${DOCKER_PYTHON} \
+  --logging gs://$OUTPUT_B/logging/ \
+  --script ${SCRIPTS}/dmr.py \
+  --tasks dmr.tsv \
+  --wait
+
+
+########################## Provide a final list of DMRs ##################
+
 
 dsub \
   --provider google-v2 \
@@ -686,24 +733,8 @@ dsub \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
-  --script ${SCRIPTS}/dmr.sh \
+  --script ${SCRIPTS}/summary.sh \
   --tasks all_samples.tsv \
   --wait
 
-# There are between 1 and 50 CpGs by snp_id
-
-
-########################## Calculate DMR ##################
-
-# Half of snps have one or two CpGs. We require at least 3.
-
-
-
-
-
-
-
-########################################################################################
-########################################################################################
-########################################################################################
 

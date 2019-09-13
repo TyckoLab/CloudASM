@@ -57,8 +57,8 @@ bq query \
                 max_cpg
             FROM SNP_DETAILS
             WHERE 
-                pos_sig_cpg >=3 
-                OR neg_sig_cpg >=3
+                pos_sig_cpg >= ${NB_CPG_SIG}
+                OR neg_sig_cpg >= ${NB_CPG_SIG}
         ),
         -- Import the list of CpGs with their respective snp_id, read_id, and allele
         CPG_LIST AS (
@@ -116,14 +116,19 @@ bq query \
             SELECT * FROM SNP_METHYL_ARRAY_REF
             INNER JOIN SNP_METHYL_ARRAY_ALT
             ON snp_id = snp_id_alt
+        ),
+        SNP_METHYL AS (
+            SELECT 
+                snp_id, 
+                ARRAY_LENGTH(ref) AS ref_reads, 
+                ARRAY_LENGTH(alt) AS alt_reads,
+                 ROUND(((SELECT AVG(methyl) FROM UNNEST(alt)) - (SELECT AVG(methyl) FROM UNNEST(ref))),3) AS effect,
+                ref, 
+                alt
+            FROM SNP_METHYL_JOIN
         )
-        SELECT 
-            snp_id, 
-            ARRAY_LENGTH(ref) AS ref_reads, 
-            ARRAY_LENGTH(alt) AS alt_reads,
-            ref, 
-            alt
-        FROM SNP_METHYL_JOIN
+        -- This removes about 15% of potential DMR
+        SELECT * FROM SNP_METHYL WHERE abs(effect) > ${DMR_EFFECT}
     "
 
 # Export file to JSON format in the bucket

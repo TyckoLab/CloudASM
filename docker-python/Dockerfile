@@ -10,6 +10,6 @@ RUN pip install pandas
 RUN pip install scipy
 
 # JSON module
-RUN pip install newlinejson
+RUN pip install ndjson
 
 CMD ["date"]
