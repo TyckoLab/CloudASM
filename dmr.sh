@@ -14,10 +14,10 @@ bq --location=US load \
 # Delete SAMPLE_cpg_genotype (the new file sample_cpg_asm has the same information and the ASM p-value)
 bq rm -f -t ${DATASET_ID}.${SAMPLE}_cpg_genotype
 
-# Query to select the SNPs with at least 3 significant CpGs in the same direction
+# Query to select the SNPs with at least CPG_PER_DMR nearby.
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_snp_for_dmr \
+    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_het_snp \
     --replace=true \
     "
     WITH 
@@ -35,7 +35,7 @@ bq query \
             GROUP BY snp_id
         ),
         -- Extract the number of CpG per SNP 
-        SNP_DETAILS AS (
+        HET_SNP AS (
             SELECT 
                 snp_id, 
                 chr, 
@@ -46,7 +46,17 @@ bq query \
                 (SELECT MIN(pos) FROM UNNEST(cpg) WHERE fisher_pvalue < 0.05) AS min_cpg,
                 (SELECT MAX(pos) FROM UNNEST(cpg) WHERE fisher_pvalue < 0.05) AS max_cpg
             FROM SNP_CPG_ARRAY
-        ),
+        )
+        -- For 3 CpG per DMR, half of the SNPs are dropped
+        SELECT * FROM HET_SNP WHERE nb_cpg >= ${CPG_PER_DMR}
+        "
+
+
+bq query \
+    --use_legacy_sql=false \
+    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_snp_for_dmr \
+    --replace=true \
+    "
         -- Select SNPs where there are at least 3 significant CpGs in the same direction
         -- At this point, we're left with 2% of SNPs.
         SNP_FOR_DMR AS (
@@ -57,8 +67,8 @@ bq query \
                 max_cpg
             FROM SNP_DETAILS
             WHERE 
-                pos_sig_cpg >= ${NB_CPG_SIG}
-                OR neg_sig_cpg >= ${NB_CPG_SIG}
+                pos_sig_cpg >= ${CPG_PER_DMR}
+                OR neg_sig_cpg >= ${CPG_PER_DMR}
         ),
         -- Import the list of CpGs with their respective snp_id, read_id, and allele
         CPG_LIST AS (
@@ -131,7 +141,8 @@ bq query \
             FROM SNP_METHYL_JOIN
         )
         -- This removes about 15% of potential DMR
-        SELECT * FROM SNP_METHYL WHERE abs(effect) > ${DMR_EFFECT}
+        --SELECT * FROM SNP_METHYL WHERE abs(effect) > ${DMR_EFFECT}
+        SELECT * FROM METHYL_PER_READ 
     "
 
 # Export file to JSON format in the bucket

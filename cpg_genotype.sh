@@ -87,7 +87,7 @@ bq query \
                 alt_meth
             FROM REF_AND_ALT
             -- we require that each allele is covered 5x
-            WHERE ref_cov >=5 AND alt_cov >= 5
+            WHERE ref_cov >=${CPG_COV} AND alt_cov >= ${CPG_COV}
         ),
         ----------------------------------------------------------
         -- keep CpG that where the C does not overlap with any SNP

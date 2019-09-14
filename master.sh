@@ -1,18 +1,16 @@
 
-########################## Variables ################################
+########################## ASM Variables ################################
 
 # Effect size required at the DMR level for an ASM.
 DMR_EFFECT="0.2"
 
 # Number of CpGs with ASM in the same direction that we require per DMR
-NB_CPG_SIG="3"
+CPG_PER_DMR="3"
 
-# GCP global variables
-PROJECT_ID="hackensack-tyco"
-REGION_ID="us-central1"
-ZONE_ID="us-central1-b"
+# Minimum coverage required for single CpGs to be considered for CpG ASM or in a DMR
+CPG_COV="5"
 
-# Docker images used for the scripts
+########################## Docker Variables ################################
 
 # Custom image with the genomics packages
 DOCKER_GENOMICS="gcr.io/hackensack-tyco/wgbs-asm"
@@ -22,6 +20,13 @@ DOCKER_PYTHON="gcr.io/hackensack-tyco/python"
 
 # Off-the-shelf GCP image for GCP-only jobs
 DOCKER_GCP="google/cloud-sdk:255.0.0"
+
+########################## GCP variables ################################
+
+# GCP global variables
+PROJECT_ID="hackensack-tyco"
+REGION_ID="us-central1"
+ZONE_ID="us-central1-b"
 
 # Big Query variables
 DATASET_ID="wgbs_asm" 
@@ -35,9 +40,6 @@ SCRIPTS="$HOME/GITHUB_REPOS/wgbs-asm/"
 
 # Create a bucket with the analysis
 gsutil mb -c regional -l $REGION_ID gs://$OUTPUT_B 
-
-# Create a local directory to download files
-WD="$HOME/wgbs" && mkdir -p $WD && cd $WD
 
 # Download the meta information about the samples and files to be analyzed.
 gsutil cp gs://$INPUT_B/samples.tsv $WD
@@ -683,6 +685,7 @@ dsub \
   --env OUTPUT_B="${OUTPUT_B}" \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
+  --env CPG_COV="${CPG_COV}" \
   --script ${SCRIPTS}/cpg_genotype.sh \
   --tasks all_samples.tsv \
   --wait
@@ -734,7 +737,7 @@ dsub \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
   --env DMR_EFFECT="${DMR_EFFECT}" \
-  --env NB_CPG_SIG="${NB_CPG_SIG}" \
+  --env CPG_PER_DMR="${NB_CPG_SIG}" \
   --script ${SCRIPTS}/dmr.sh \
   --tasks all_samples.tsv \
   --wait
@@ -778,7 +781,15 @@ dsub \
 #################################################################
 #################################################################
 
+# Problem de number of reads per REF AND ALT per DMR
+# Other problem: in the DMR calculation, we only conside
+# All CpGs in the DMR wilcoxon need to be covered 5x on both REF and ALT -- which we did.
+
 Rename gm12878_cpg_read_genotype in gm12878_cpg_genotype AND propagate
 
 # Needs to be a separate script
 Compute the background of HET in the genome (5x cov per allele and 3 CpGs total)
+
+
+SNP
+49k in raw VCF - 37k SNP with CpG nearby -- 17k SNP with at least 3 CpG
