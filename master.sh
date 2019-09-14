@@ -787,9 +787,12 @@ dsub \
 
 Rename gm12878_cpg_read_genotype in gm12878_cpg_genotype AND propagate
 
-# Needs to be a separate script
+# Needs to be a separate script. DONE.
 Compute the background of HET in the genome (5x cov per allele and 3 CpGs total)
 
 
 SNP
 49k in raw VCF - 37k SNP with CpG nearby -- 17k SNP with at least 3 CpG
+
+
+PROBLEM: THE FILE CPG_GENOTYPE HAS 4M ROWS BUT THE CONTEXT FILE HAS 33M

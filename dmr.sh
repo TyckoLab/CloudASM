@@ -59,13 +59,16 @@ bq query \
     "
         -- Select SNPs where there are at least 3 significant CpGs in the same direction
         -- At this point, we're left with 2% of SNPs.
+        HET_SNP AS (
+            SELECT * FROM ${DATASET_ID}.${SAMPLE}_het_snp
+        ),
         SNP_FOR_DMR AS (
             SELECT
                 snp_id AS snp_id_dmr, 
                 chr AS chr_dmr,
                 min_cpg,
                 max_cpg
-            FROM SNP_DETAILS
+            FROM HET_SNP
             WHERE 
                 pos_sig_cpg >= ${CPG_PER_DMR}
                 OR neg_sig_cpg >= ${CPG_PER_DMR}
