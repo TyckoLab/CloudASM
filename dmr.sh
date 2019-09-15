@@ -51,7 +51,7 @@ bq query \
         SELECT * FROM HET_SNP WHERE nb_cpg >= ${CPG_PER_DMR}
         "
 
-
+# Make a table with all the possible DMRs (before computing p-value)
 bq query \
     --use_legacy_sql=false \
     --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_snp_for_dmr \
@@ -59,9 +59,11 @@ bq query \
     "
         -- Select SNPs where there are at least 3 significant CpGs in the same direction
         -- At this point, we're left with 2% of SNPs.
+    WITH    
         HET_SNP AS (
             SELECT * FROM ${DATASET_ID}.${SAMPLE}_het_snp
         ),
+        -- Any DMR needs at least CPG_PER_DMR in the same direction
         SNP_FOR_DMR AS (
             SELECT
                 snp_id AS snp_id_dmr, 
@@ -74,46 +76,83 @@ bq query \
                 OR neg_sig_cpg >= ${CPG_PER_DMR}
         ),
         -- Import the list of CpGs with their respective snp_id, read_id, and allele
-        CPG_LIST AS (
-            SELECT * FROM ${DATASET_ID}.${SAMPLE}_cpg_read_genotype
+        ALL_CPG AS (
+            SELECT 
+                chr AS chr_cpg,
+                pos AS pos_cpg,
+                meth,
+                cov,
+                snp_id AS snp_id_cpg,
+                allele,
+                read_id 
+            FROM ${DATASET_ID}.${SAMPLE}_cpg_read_genotype
+        ),
+        WELL_COVERED_CPG AS (
+            SELECT 
+                chr AS chr_well_cov, 
+                pos AS pos_well_cov
+            FROM ${DATASET_ID}.${SAMPLE}_cpg_asm
+        ),
+        FILTERED_CPG AS (
+            SELECT * FROM ALL_CPG
+            INNER JOIN WELL_COVERED_CPG
+            ON chr_cpg = chr_well_cov 
+               AND pos_cpg = pos_well_cov 
+        ),
+        FILTERED_CPG_CLEAN AS (
+            SELECT DISTINCT
+                chr_cpg,
+                pos_cpg,
+                meth,
+                cov,
+                snp_id_cpg,
+                allele,
+                read_id 
+            FROM FILTERED_CPG
         ),
         -- INTERSECT WITH THE LIST OF CPGS WHERE WE HAVE THE SNP AND READ_ID, AND ALLELE
-        SNP_AND_READID AS (
+        CPG_DMR AS (
             SELECT * FROM SNP_FOR_DMR
-            INNER JOIN CPG_LIST
-            ON snp_id = snp_id_dmr AND chr = chr_dmr
+            INNER JOIN FILTERED_CPG_CLEAN
+            ON snp_id_cpg = snp_id_dmr AND chr_cpg = chr_dmr
         ),
         QUALIFYING_CPG AS (
         -- All CpGs that are located within the boundaries of the potential DMR
         -- This removes 1/3 of all CpGs.
             SELECT 
-                chr, 
-                pos, 
+                chr_cpg, 
+                pos_cpg, 
                 meth, 
                 cov, 
-                snp_id, 
+                snp_id_cpg AS snp_id, 
+                min_cpg,
+                max_cpg,
                 allele, 
                 read_id 
-            FROM SNP_AND_READID
+            FROM CPG_DMR
             WHERE 
-                pos >= min_cpg 
-                AND pos <= max_cpg
+                pos_cpg >= min_cpg 
+                AND pos_cpg <= max_cpg
         ),
         -- Compute the methylation % per read_id, per snp_id
         METHYL_PER_READ AS (
             SELECT 
                 snp_id,
-                chr,
+                chr_cpg,
+                ANY_VALUE(min_cpg) AS dmr_inf,
+                ANY_VALUE(max_cpg) AS dmr_sup,
                 read_id,
                 allele,
                 ROUND(SAFE_DIVIDE(SUM(meth),SUM(cov)),5) AS methyl
             FROM QUALIFYING_CPG
-            GROUP BY snp_id, read_id, allele, chr
+            GROUP BY snp_id, read_id, allele, chr_cpg
         ),
         SNP_METHYL_ARRAY_REF AS (
             SELECT
                 snp_id,
-                ANY_VALUE(chr) AS chr,
+                ANY_VALUE(chr_cpg) AS chr,
+                ANY_VALUE(dmr_inf) AS dmr_inf,
+                ANY_VALUE(dmr_sup) AS dmr_sup,
                 ARRAY_AGG(STRUCT(methyl)) AS ref
             FROM METHYL_PER_READ
             WHERE allele = 'REF'
@@ -136,6 +175,8 @@ bq query \
             SELECT 
                 snp_id, 
                 chr,
+                dmr_inf,
+                dmr_sup,
                 ARRAY_LENGTH(ref) AS ref_reads, 
                 ARRAY_LENGTH(alt) AS alt_reads,
                  ROUND(((SELECT AVG(methyl) FROM UNNEST(alt)) - (SELECT AVG(methyl) FROM UNNEST(ref))),3) AS effect,
@@ -144,8 +185,9 @@ bq query \
             FROM SNP_METHYL_JOIN
         )
         -- This removes about 15% of potential DMR
-        --SELECT * FROM SNP_METHYL WHERE abs(effect) > ${DMR_EFFECT}
-        SELECT * FROM METHYL_PER_READ 
+        SELECT * FROM SNP_METHYL WHERE abs(effect) > ${DMR_EFFECT}
+        --SELECT * FROM METHYL_PER_READ
+        --SELECT * FROM SNP_METHYL_JOIN
     "
 
 # Export file to JSON format in the bucket

@@ -17,13 +17,14 @@ bq rm -f -t ${DATASET_ID}.${SAMPLE}_snp_for_dmr
 # Query to select the SNPs with at least 3 significant CpGs in the same direction
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.asm_snp \
-    --replace=false \
+    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_asm_snp \
+    --replace=true \
     "
     SELECT
-        '${SAMPLE}' as sample,
         chr,
         snp_id,
+        dmr_inf,
+        dmr_sup,
         ref_reads AS nb_ref_reads,
         alt_reads AS nb_alt_reads,
         effect AS effect_size,

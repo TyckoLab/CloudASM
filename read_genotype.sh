@@ -187,48 +187,8 @@ bq query \
         UNION ALL
         SELECT * FROM ONLY_CT_OR_GA WHERE allele != 'bad_snp'
     )
-    -- This filters out the reads where the nucleotide with the SNP has a score below 30 (63 in ASCII)
-    SELECT * FROM ALL_SNP
-    WHERE SAFE_CAST(TO_CODE_POINTS(snp_score)[offset(0)] AS INT64) >= 63
+    -- This filters out the reads where the nucleotide with the SNP has a score below $SNP_SCORE
+    SELECT DISTINCT * FROM ALL_SNP
+    WHERE SAFE_CAST(TO_CODE_POINTS(snp_score)[offset(0)] AS INT64) >= ${SNP_SCORE}
   "
 
-
-# Create a summary genotyping file 
-# with the number of reads covering REF and ALT for each SNP
-
-bq query \
-    --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_snp_genotype \
-    --replace=true \
-    "
-    WITH 
-        REF_COUNT AS (
-            SELECT snp_id, 
-                chr,
-                COUNT(read_id) AS ref_cov 
-            FROM ${DATASET_ID}.${SAMPLE}_vcf_reads_genotype
-            WHERE allele = 'REF'
-            GROUP BY snp_id, chr 
-        ),
-        ALT_COUNT AS (
-            SELECT snp_id AS alt_snp_id, 
-                chr AS alt_chr,
-                COUNT(read_id) AS alt_cov 
-            FROM ${DATASET_ID}.${SAMPLE}_vcf_reads_genotype
-            WHERE allele = 'ALT'
-            GROUP BY snp_id, chr
-        ),
-        BOTH_REF_ALT AS (
-            SELECT * FROM REF_COUNT
-            JOIN 
-               ALT_COUNT
-            ON snp_id = alt_snp_id AND chr = alt_chr
-        )
-    SELECT 
-        snp_id,
-        chr,
-        ref_cov,
-        alt_cov,
-        ref_cov + alt_cov AS total_cov
-    FROM BOTH_REF_ALT
-  "

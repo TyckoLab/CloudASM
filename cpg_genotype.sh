@@ -25,16 +25,16 @@ bq query \
             INNER JOIN GENOTYPE 
             ON read_id = geno_read_id
         )
-        -- we remove the extra columns
-            SELECT 
-                chr, 
-                pos,
-                meth,
-                cov,
-                snp_id,
-                allele,
-                read_id
-            FROM COMBINED
+        -- we remove the extra columns and keep distinct rows
+        SELECT DISTINCT
+            chr, 
+            pos,
+            meth,
+            cov,
+            snp_id,
+            allele,
+            read_id
+        FROM COMBINED
         "
 
 # This file will be used to compute single CPG ASM

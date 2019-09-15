@@ -4,11 +4,15 @@
 # Effect size required at the DMR level for an ASM.
 DMR_EFFECT="0.2"
 
-# Number of CpGs with ASM in the same direction that we require per DMR
+# Number of CpGs we require near a SNP for it to be tested with ASM 
+# In a DMR, it is also the number of CpGs with significant ASM in the same direction
 CPG_PER_DMR="3"
 
 # Minimum coverage required for single CpGs to be considered for CpG ASM or in a DMR
 CPG_COV="5"
+
+# Minimum reading score of the SNP
+SNP_SCORE="63" # In ASCII, 63 correponds to a quality score of 30
 
 ########################## Docker Variables ################################
 
@@ -779,20 +783,3 @@ dsub \
 
 
 #################################################################
-#################################################################
-
-# Problem de number of reads per REF AND ALT per DMR
-# Other problem: in the DMR calculation, we only conside
-# All CpGs in the DMR wilcoxon need to be covered 5x on both REF and ALT -- which we did.
-
-Rename gm12878_cpg_read_genotype in gm12878_cpg_genotype AND propagate
-
-# Needs to be a separate script. DONE.
-Compute the background of HET in the genome (5x cov per allele and 3 CpGs total)
-
-
-SNP
-49k in raw VCF - 37k SNP with CpG nearby -- 17k SNP with at least 3 CpG
-
-
-PROBLEM: THE FILE CPG_GENOTYPE HAS 4M ROWS BUT THE CONTEXT FILE HAS 33M
