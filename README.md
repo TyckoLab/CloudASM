@@ -143,3 +143,7 @@ at least 20% difference between the REF reads and the ALT reads and FDR < 0.05
 
 Bis-SNP reports SNPs in positive strand of the reference genome (it's NOT bisulfite-converted)
 Bismark reports in positive strand but it is bisulfite-converted, requiring careful handling of the Bis-SNP variant call data.
+
+
+
+nochr file for dbSNP: we renamed chr21 into '21' to agree with the SAM files.

@@ -4,15 +4,18 @@
 # Effect size required at the DMR level for an ASM.
 DMR_EFFECT="0.2"
 
-# Number of CpGs we require near a SNP for it to be tested with ASM 
+# Number of CpGs we require near a SNP for it to be tested with ASM DMR 
 # In a DMR, it is also the number of CpGs with significant ASM in the same direction
 CPG_PER_DMR="3"
 
-# Minimum coverage required for single CpGs to be considered for CpG ASM or in a DMR
+# Number of consecutive CpGs with significant ASM in the same direction
+CONSECUTIVE_CPG="2"
+
+# Minimum CpG coverage required per allele for single CpGs to be considered for CpG ASM or in a DMR
 CPG_COV="5"
 
 # Minimum reading score of the SNP
-SNP_SCORE="63" # In ASCII, 63 correponds to a quality score of 30
+SNP_SCORE="63" # In ASCII (which we use in BigQuery), 63 correponds to a quality score of 30. See this table: https://www.drive5.com/usearch/manual/quality_score.html
 
 ########################## Docker Variables ################################
 
@@ -90,6 +93,8 @@ awk -v INPUT_B="${INPUT_B}" \
 
 # Add headers to the file
 sed -i '1i --input ZIPPED\t--env FASTQ\t--output OUTPUT_FILES' decompress.tsv
+
+# Creating ~ 4,000 pairs of fastq files 
 
 # Launch job
 dsub \
@@ -194,7 +199,7 @@ done < sample_id.txt
 # Print a message in the terminal
 echo "There are" $(cat align.tsv | wc -l) "to be launched"
 
-# Submit job
+# Submit job (will require about 64,000 CPUs per sample)
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -398,9 +403,6 @@ dsub \
   --tasks all_samples.tsv \
   --wait
 
-
-
-
 ########################## Re-calibrate BAM  ################################
 
 # This step is required by the variant call Bis-SNP
@@ -435,6 +437,15 @@ dsub \
 
 ########################## Variant call  ################################
 
+# Prepare TSV file
+echo -e "--env SAMPLE\t--env CHR\t--input BAM_BAI\t--output OUTPUT_DIR" > variant_call.tsv
+
+while read SAMPLE ; do
+  for CHR in `seq 1 22` X Y ; do 
+  echo -e "$SAMPLE\t$CHR\tgs://$OUTPUT_B/$SAMPLE/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.ba*\tgs://$OUTPUT_B/$SAMPLE/variants_per_chr/*" >> variant_call.tsv
+  done
+done < sample_id.txt
+
 
 dsub \
   --provider google-v2 \
@@ -447,7 +458,7 @@ dsub \
   --input REF_GENOME="gs://$REF_DATA_B/grc37/*" \
   --input VCF="gs://$REF_DATA_B/dbSNP150_grc37_GATK/no_chr_dbSNP150_GRCh37.vcf" \
   --script ${SCRIPTS}/variant_call.sh \
-  --tasks all_samples.tsv \
+  --tasks variant_call.tsv \
   --wait
 
 
@@ -501,7 +512,8 @@ dsub \
   --wait
 
 
-# Delete the SAM files from the bucket (they take a lot of space) and the raw SAM files from Big Query
+# Delete the SAM files from the bucket (they take a lot of space) 
+# and the raw SAM files from Big Query
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -783,3 +795,11 @@ dsub \
 
 
 #################################################################
+
+2 PROBLEMS:
+- Modify the VCF script to upload the raw VCF file
+-2 CONSECUTIVE CpGs
+-CHR BECOMES AN INTEGER AT SOME POINT. PROBABLY BECAUSE OF THE JSON. LET'S WAIT UNTIL WE TRY WITH CHR X AND Y.
+
+
+JOIN by position when overlapping the the "raw" SNP by Bis-SNP and the dbSNP database.
