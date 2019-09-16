@@ -28,7 +28,9 @@ bq query \
         ref_reads AS nb_ref_reads,
         alt_reads AS nb_alt_reads,
         effect AS effect_size,
-        wilcoxon_pvalue
+        wilcoxon_pvalue,
+        nb_cpg,
+        nb_sig_cpg
     FROM ${DATASET_ID}.${SAMPLE}_dmr_pvalue
     WHERE 
         wilcoxon_pvalue < 0.05

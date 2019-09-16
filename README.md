@@ -147,3 +147,39 @@ Bismark reports in positive strand but it is bisulfite-converted, requiring care
 
 
 nochr file for dbSNP: we renamed chr21 into '21' to agree with the SAM files.
+
+
+## Prepare the databases required to run the pipeline
+
+### Reference genome: GRCh38.p7
+
+The reference genome (unmasked genomic DNA sequences) was downloaded from here:
+
+Download all files.
+
+```
+wget ftp://ftp.ensembl.org/pub/release-87/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.*.fa.gz
+```
+
+
+### dbSNP database (dbSNP151)
+
+https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/All_20180418.vcf.gz
+
+Download to a computer, unzip and upload to the bucket REF_DATA_B
+
+Note that the header of this VCF file is:
+
+```
+##fileformat=VCFv4.0
+##fileDate=20180418
+##source=dbSNP
+##dbSNP_BUILD_ID=151
+##reference=GRCh38.p7
+```
+
+
+### Bisulfite-converted reference genome.
+
+
+gatk

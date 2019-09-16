@@ -8,6 +8,9 @@ RUN apt-get install build-essential -y
 # Convenient text editor
 RUN apt-get install nano
 
+# To download files from the internet
+RUN apt-get install wget
+
 ################## BEGIN INSTALLATION OF GENOMIC PACKAGES ######################
 
 WORKDIR /root

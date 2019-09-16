@@ -40,13 +40,15 @@ DATASET_ID="wgbs_asm"
 
 # Cloud storage variables
 OUTPUT_B="em-encode-deux" # will be created by the script
-REF_DATA_B="wgbs-ref-files" # See documentation for what it needs to contain
+REF_DATA_B="wgbs-ref-files" 
 
 # Path of where you downloaded the Github scripts
 SCRIPTS="$HOME/GITHUB_REPOS/wgbs-asm/"
 
 # Create a bucket with the analysis
-gsutil mb -c regional -l $REGION_ID gs://$OUTPUT_B 
+gsutil mb -c nearline -l $REGION_ID gs://${OUTPUT_B} 
+gsutil mb -c nearline -l $REGION_ID gs://${REF_DATA_B}
+
 
 # Download the meta information about the samples and files to be analyzed.
 gsutil cp gs://$INPUT_B/samples.tsv $WD
@@ -76,7 +78,43 @@ while read SAMPLE ; do
 done < sample_id.txt
 
 
+########################## Assemble and prepare the ref genome. Download variants database ################################
 
+# We assemble the ref genome, prepare it to be used by Bismark, and download/unzip the variant database
+
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --disk-size 800 \
+  --machine-type n1-standard-4 \
+  --zones $ZONE_ID \
+  --image $DOCKER_GENOMICS \
+  --logging gs://$OUTPUT_B/logging/ \
+  --output OUTPUT_DIR="gs://$REF_DATA_B" 
+  --script ${SCRIPTS}/preparation.sh \
+  --wait
+
+########################## Create BQ datasets and upload variant database ################################
+
+# Create a dataset on BigQuery for the variant database
+bq --location=location mk \
+    --dataset \
+    ${PROJECT_ID}:"databases"
+
+# Create a dataset on BigQuery for the samples to be analyzed for ASM
+bq --location=location mk \
+    --dataset \
+    ${PROJECT_ID}:${DATASET_ID}
+
+# Upload the database of SNPs to Big Query. (the first 57 rows are part of the header)
+bq --location=US load \
+               --replace=true \
+               --source_format=CSV \
+               --skip_leading_rows=57 \
+               --field_delimiter "\t" \
+               "databases.grch38_db151" \
+               gs://${REF_DATA_B}/grch38_db151/All_20180418.vcf \
+               chr:STRING,pos:INTEGER,snp_id:STRING,ref:STRING,alt:STRING,qual:STRING,filter:STRING,info:STRING
 
 ########################## Unzip, rename, and split fastq files ################################
 
@@ -94,7 +132,7 @@ awk -v INPUT_B="${INPUT_B}" \
 # Add headers to the file
 sed -i '1i --input ZIPPED\t--env FASTQ\t--output OUTPUT_FILES' decompress.tsv
 
-# Creating ~ 4,000 pairs of fastq files 
+# Creating ~ 4,000 pairs of fastq files for a 1.2M row split.
 
 # Launch job
 dsub \
@@ -797,9 +835,12 @@ dsub \
 #################################################################
 
 2 PROBLEMS:
-- Modify the VCF script to upload the raw VCF file
+- Modify the VCF script to upload the raw VCF file. DONE NEED TO BE TESTED.
+- ALIGN AGAINST THE NEW GENOME WITH DB151
 -2 CONSECUTIVE CpGs
--CHR BECOMES AN INTEGER AT SOME POINT. PROBABLY BECAUSE OF THE JSON. LET'S WAIT UNTIL WE TRY WITH CHR X AND Y.
+-CHR BECOMES AN INTEGER AT SOME POINT. PROBABLY BECAUSE OF THE JSON. LETS WAIT UNTIL WE TRY WITH CHR X AND Y.
 
+
+TEST:
 
 JOIN by position when overlapping the the "raw" SNP by Bis-SNP and the dbSNP database.

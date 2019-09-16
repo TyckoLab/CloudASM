@@ -69,7 +69,9 @@ bq query \
                 snp_id AS snp_id_dmr, 
                 chr AS chr_dmr,
                 min_cpg,
-                max_cpg
+                max_cpg,
+                nb_cpg,
+                nb_sig_cpg
             FROM HET_SNP
             WHERE 
                 pos_sig_cpg >= ${CPG_PER_DMR}
@@ -128,7 +130,9 @@ bq query \
                 min_cpg,
                 max_cpg,
                 allele, 
-                read_id 
+                read_id,
+                nb_cpg,
+                nb_sig_cpg 
             FROM CPG_DMR
             WHERE 
                 pos_cpg >= min_cpg 
@@ -143,7 +147,9 @@ bq query \
                 ANY_VALUE(max_cpg) AS dmr_sup,
                 read_id,
                 allele,
-                ROUND(SAFE_DIVIDE(SUM(meth),SUM(cov)),5) AS methyl
+                ROUND(SAFE_DIVIDE(SUM(meth),SUM(cov)),5) AS methyl,
+                ANY_VALUE(nb_cpg) AS nb_cpg,
+                ANY_VALUE(nb_sig_cpg) AS nb_sig_cpg
             FROM QUALIFYING_CPG
             GROUP BY snp_id, read_id, allele, chr_cpg
         ),
@@ -153,7 +159,9 @@ bq query \
                 ANY_VALUE(chr_cpg) AS chr,
                 ANY_VALUE(dmr_inf) AS dmr_inf,
                 ANY_VALUE(dmr_sup) AS dmr_sup,
-                ARRAY_AGG(STRUCT(methyl)) AS ref
+                ARRAY_AGG(STRUCT(methyl)) AS ref,
+                ANY_VALUE(nb_cpg) AS nb_cpg,
+                ANY_VALUE(nb_sig_cpg) AS nb_sig_cpg
             FROM METHYL_PER_READ
             WHERE allele = 'REF'
             GROUP BY snp_id
@@ -181,7 +189,9 @@ bq query \
                 ARRAY_LENGTH(alt) AS alt_reads,
                  ROUND(((SELECT AVG(methyl) FROM UNNEST(alt)) - (SELECT AVG(methyl) FROM UNNEST(ref))),3) AS effect,
                 ref, 
-                alt
+                alt,
+                nb_cpg,
+                nb_sig_cpg
             FROM SNP_METHYL_JOIN
         )
         -- This removes about 15% of potential DMR
