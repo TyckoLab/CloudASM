@@ -31,7 +31,9 @@ bq query \
                     STRUCT(
                         pos,
                         ROUND(alt_meth/alt_cov-ref_meth/ref_cov,3) AS effect,
-                        fisher_pvalue
+                        fisher_pvalue,
+                        ref_cov,
+                        alt_cov
                         )
                     ORDER BY pos
                     ) 
@@ -80,9 +82,8 @@ bq query \
                 nb_sig_cpg,
                 cpg
             FROM HET_SNP
-            WHERE 
-                pos_sig_cpg >= ${CPG_PER_DMR}
-                OR neg_sig_cpg >= ${CPG_PER_DMR}
+            -- To have boundaries in the DMR made of significant CpGs, we need at least 2 of them.
+            WHERE nb_sig_cpg >= 2 
         ),
         -- Import the list of CpGs with their respective snp_id, read_id, and allele
         ALL_CPG AS (
@@ -142,6 +143,7 @@ bq query \
                 nb_sig_cpg,
                 cpg
             FROM CPG_DMR
+            -- Many snps from HET SNPs do not have lower or upper bound.
             WHERE 
                 pos_cpg >= min_cpg 
                 AND pos_cpg <= max_cpg
@@ -205,10 +207,9 @@ bq query \
                 cpg
             FROM SNP_METHYL_JOIN
         )
-        -- This removes about 15% of potential DMR
-        SELECT * FROM SNP_METHYL WHERE abs(effect) > ${DMR_EFFECT}
-        --SELECT * FROM METHYL_PER_READ
-        --SELECT * FROM SNP_METHYL_JOIN
+        -- Before, we would remove DMR with effects less than DMR_EFFECT but we'll remove them
+        -- in summary.sh
+        SELECT * FROM SNP_METHYL 
     "
 
 # Export file to JSON format in the bucket

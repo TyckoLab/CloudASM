@@ -4,15 +4,15 @@
 # Effect size required at the DMR level for an ASM.
 DMR_EFFECT="0.2"
 
+# Minimum CpG coverage required per allele for single CpGs to be considered for CpG ASM, in a DMR, or "near" a SNP
+CPG_COV="5"
+
 # Number of CpGs we require near a SNP for it to be tested with ASM DMR 
 # In a DMR, it is also the number of CpGs with significant ASM in the same direction
 CPG_PER_DMR="3"
 
 # Number of consecutive CpGs with significant ASM in the same direction (among all well-covered CpGs)
 CONSECUTIVE_CPG="2"
-
-# Minimum CpG coverage required per allele for single CpGs to be considered for CpG ASM or in a DMR
-CPG_COV="5"
 
 # Minimum reading score of the SNP
 SNP_SCORE="63" # In ASCII (which we use in BigQuery), 63 correponds to a quality score of 30. See this table: https://www.drive5.com/usearch/manual/quality_score.html
@@ -81,17 +81,20 @@ done < sample_id.txt
 ########################## Assemble and prepare the ref genome. Download variants database ################################
 
 # We assemble the ref genome, prepare it to be used by Bismark, and download/unzip the variant database
+# This step takes about 7 hours
 
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
-  --disk-size 800 \
-  --machine-type n1-standard-4 \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
+  --disk-size 800 \
+  --machine-type n1-standard-4 \
   --logging gs://$OUTPUT_B/logging/ \
-  --output-recursive OUTPUT_DIR="gs://$REF_DATA_B" \
+  --output-recursive OUTPUT_DIR="gs://$REF_DATA_B/grch38" \
   --script ${SCRIPTS}/preparation.sh 
+
+
 
 ########################## Create BQ datasets and upload variant database ################################
 
@@ -784,7 +787,6 @@ dsub \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
-  --env DMR_EFFECT="${DMR_EFFECT}" \
   --env CPG_PER_DMR="${NB_CPG_SIG}" \
   --script ${SCRIPTS}/dmr.sh \
   --tasks all_samples.tsv \
@@ -821,6 +823,7 @@ dsub \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
+  --env DMR_EFFECT="${DMR_EFFECT}" \
   --script ${SCRIPTS}/summary.sh \
   --tasks all_samples.tsv \
   --wait
@@ -828,20 +831,20 @@ dsub \
 
 #################################################################
 
-2 PROBLEMS:
-- Modify the VCF script to upload the raw VCF file. DONE NEED TO BE TESTED.
-- ALIGN AGAINST THE NEW GENOME WITH DB151
--2 CONSECUTIVE CpGs
--CHR BECOMES AN INTEGER AT SOME POINT. PROBABLY BECAUSE OF THE JSON. LETS WAIT UNTIL WE TRY WITH CHR X AND Y.
 
-
-TEST:
-
-JOIN by position when overlapping the the "raw" SNP by Bis-SNP and the dbSNP database.
-
-
-QUESTIONS FOR CATHERINE
+QUESTIONS FOR CATHERINE. CONFIRMED.
 DMR EFFECT SIZE: OVER ALL CPGS, EVEN THE ONES THAT ARE NOT WELL COVERED? -- using only the well-covered CpG
 2 CONSECUTIVE CPGS (SIGNIFICANT, ASM IN SAME DIRECTION) AMONG ALL WELL COVERED CPGS?
 
+TASKS:
+1/
 FIND THE 2 CONSECUTIVE CPGS IN THE PYTHON SCRIPT
+
+2/ THE LIST OF SNPS IN SNP_FOR_DMR AND HET_SNP IS NOT THE SAME. IT SHOULD BE.
+
+3/ REMOVE CPGS BASED ON A NEW LIST OF VARIANTS.
+
+4/ ALIGN AGAINST NEW GENOME.
+
+5/ BE CAREFUL AT THE CLASSIFICATION OF CHR COLUMN AFTER GOING INTO PYTHON
+
