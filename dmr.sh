@@ -27,10 +27,15 @@ bq query \
                 snp_id,
                 ANY_VALUE(chr) AS chr,
                 --ANY_VALUE(nb_cpg) AS nb_cpg,
-                ARRAY_AGG(STRUCT(pos,
-                                ROUND(alt_meth/alt_cov-ref_meth/ref_cov,3) AS alt_minus_ref,
-                                fisher_pvalue)) 
-                        AS cpg
+                ARRAY_AGG(
+                    STRUCT(
+                        pos,
+                        ROUND(alt_meth/alt_cov-ref_meth/ref_cov,3) AS effect,
+                        fisher_pvalue
+                        )
+                    ORDER BY pos
+                    ) 
+                    AS cpg
             FROM ${DATASET_ID}.${SAMPLE}_cpg_asm
             GROUP BY snp_id
         ),
@@ -41,10 +46,11 @@ bq query \
                 chr, 
                 ARRAY_LENGTH(cpg) AS nb_cpg, 
                 (SELECT COUNT(fisher_pvalue) FROM UNNEST(cpg) WHERE fisher_pvalue < 0.05) AS nb_sig_cpg, 
-                (SELECT COUNT(fisher_pvalue) FROM UNNEST(cpg) WHERE fisher_pvalue < 0.05 AND SIGN(alt_minus_ref) = 1) AS pos_sig_cpg,
-                (SELECT COUNT(fisher_pvalue) FROM UNNEST(cpg) WHERE fisher_pvalue < 0.05 AND SIGN(alt_minus_ref) = -1) AS neg_sig_cpg, 
+                (SELECT COUNT(fisher_pvalue) FROM UNNEST(cpg) WHERE fisher_pvalue < 0.05 AND SIGN(effect) = 1) AS pos_sig_cpg,
+                (SELECT COUNT(fisher_pvalue) FROM UNNEST(cpg) WHERE fisher_pvalue < 0.05 AND SIGN(effect) = -1) AS neg_sig_cpg, 
                 (SELECT MIN(pos) FROM UNNEST(cpg) WHERE fisher_pvalue < 0.05) AS min_cpg,
-                (SELECT MAX(pos) FROM UNNEST(cpg) WHERE fisher_pvalue < 0.05) AS max_cpg
+                (SELECT MAX(pos) FROM UNNEST(cpg) WHERE fisher_pvalue < 0.05) AS max_cpg,
+                cpg
             FROM SNP_CPG_ARRAY
         )
         -- For 3 CpG per DMR, half of the SNPs are dropped
@@ -71,7 +77,8 @@ bq query \
                 min_cpg,
                 max_cpg,
                 nb_cpg,
-                nb_sig_cpg
+                nb_sig_cpg,
+                cpg
             FROM HET_SNP
             WHERE 
                 pos_sig_cpg >= ${CPG_PER_DMR}

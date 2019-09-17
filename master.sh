@@ -90,15 +90,10 @@ dsub \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
   --logging gs://$OUTPUT_B/logging/ \
-  --output OUTPUT_DIR="gs://$REF_DATA_B" \
+  --output OUTPUT_DIR="gs://$REF_DATA_B/*" \
   --script ${SCRIPTS}/preparation.sh 
 
 ########################## Create BQ datasets and upload variant database ################################
-
-# Create a dataset on BigQuery for the variant database
-bq --location=location mk \
-    --dataset \
-    ${PROJECT_ID}:"databases"
 
 # Create a dataset on BigQuery for the samples to be analyzed for ASM
 bq --location=location mk \
@@ -111,7 +106,7 @@ bq --location=US load \
                --source_format=CSV \
                --skip_leading_rows=57 \
                --field_delimiter "\t" \
-               "databases.grch38_db151" \
+               ${DATASET_ID}."grch38_db151" \
                gs://${REF_DATA_B}/grch38_db151/All_20180418.vcf \
                chr:STRING,pos:INTEGER,snp_id:STRING,ref:STRING,alt:STRING,qual:STRING,filter:STRING,info:STRING
 
