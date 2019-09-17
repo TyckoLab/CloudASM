@@ -30,13 +30,16 @@ bq query \
         effect AS effect_size,
         wilcoxon_pvalue,
         nb_cpg,
-        nb_sig_cpg
+        nb_sig_cpg,
+        pos_sig_cpg,
+        neg_sig_cpg,
+        nb_consecutive_asm
     FROM ${DATASET_ID}.${SAMPLE}_dmr_pvalue
     WHERE 
         wilcoxon_pvalue < 0.05 
-        AND effect > ${DMR_EFFECT}
+        AND ABS(effect) > ${DMR_EFFECT}
         AND (pos_sig_cpg >= ${CPG_PER_DMR}
                 OR neg_sig_cpg >= ${CPG_PER_DMR})
- 
+        AND nb_consecutive_asm > 0
     "
 

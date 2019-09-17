@@ -45,7 +45,7 @@ REF_DATA_B="wgbs-ref-files"
 # Path of where you downloaded the Github scripts
 SCRIPTS="$HOME/GITHUB_REPOS/wgbs-asm/"
 
-# Create a bucket with the analysis
+# Create buckets for the analysis and for the ref genome / variant database
 gsutil mb -c nearline -l $REGION_ID gs://${OUTPUT_B} 
 gsutil mb -c nearline -l $REGION_ID gs://${REF_DATA_B}
 
@@ -110,7 +110,7 @@ bq --location=US load \
                --skip_leading_rows=57 \
                --field_delimiter "\t" \
                ${DATASET_ID}."grch38_db151" \
-               gs://${REF_DATA_B}/grch38_db151/All_20180418.vcf \
+               gs://${REF_DATA_B}/grch38/variants/All_20180418.vcf \
                chr:STRING,pos:INTEGER,snp_id:STRING,ref:STRING,alt:STRING,qual:STRING,filter:STRING,info:STRING
 
 ########################## Unzip, rename, and split fastq files ################################

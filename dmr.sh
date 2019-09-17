@@ -80,6 +80,8 @@ bq query \
                 max_cpg,
                 nb_cpg,
                 nb_sig_cpg,
+                pos_sig_cpg,
+                neg_sig_cpg,
                 cpg
             FROM HET_SNP
             -- To have boundaries in the DMR made of significant CpGs, we need at least 2 of them.
@@ -141,6 +143,8 @@ bq query \
                 read_id,
                 nb_cpg,
                 nb_sig_cpg,
+                pos_sig_cpg,
+                neg_sig_cpg,
                 cpg
             FROM CPG_DMR
             -- Many snps from HET SNPs do not have lower or upper bound.
@@ -160,6 +164,8 @@ bq query \
                 ROUND(SAFE_DIVIDE(SUM(meth),SUM(cov)),5) AS methyl,
                 ANY_VALUE(nb_cpg) AS nb_cpg,
                 ANY_VALUE(nb_sig_cpg) AS nb_sig_cpg,
+                ANY_VALUE(pos_sig_cpg) AS pos_sig_cpg,
+                ANY_VALUE(neg_sig_cpg) AS neg_sig_cpg,
                 ANY_VALUE(cpg) AS cpg
             FROM QUALIFYING_CPG
             GROUP BY snp_id, read_id, allele, chr_cpg
@@ -173,6 +179,8 @@ bq query \
                 ARRAY_AGG(STRUCT(methyl)) AS ref,
                 ANY_VALUE(nb_cpg) AS nb_cpg,
                 ANY_VALUE(nb_sig_cpg) AS nb_sig_cpg,
+                ANY_VALUE(pos_sig_cpg) AS pos_sig_cpg,
+                ANY_VALUE(neg_sig_cpg) AS neg_sig_cpg,
                 ANY_VALUE(cpg) AS cpg
             FROM METHYL_PER_READ
             WHERE allele = 'REF'
@@ -204,6 +212,8 @@ bq query \
                 alt,
                 nb_cpg,
                 nb_sig_cpg,
+                pos_sig_cpg,
+                neg_sig_cpg,
                 cpg
             FROM SNP_METHYL_JOIN
         )
