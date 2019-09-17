@@ -90,9 +90,8 @@ dsub \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
   --logging gs://$OUTPUT_B/logging/ \
-  --output OUTPUT_DIR="gs://$REF_DATA_B" 
-  --script ${SCRIPTS}/preparation.sh \
-  --wait
+  --output OUTPUT_DIR="gs://$REF_DATA_B" \
+  --script ${SCRIPTS}/preparation.sh 
 
 ########################## Create BQ datasets and upload variant database ################################
 
