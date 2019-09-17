@@ -8,7 +8,7 @@ DMR_EFFECT="0.2"
 # In a DMR, it is also the number of CpGs with significant ASM in the same direction
 CPG_PER_DMR="3"
 
-# Number of consecutive CpGs with significant ASM in the same direction
+# Number of consecutive CpGs with significant ASM in the same direction (among all well-covered CpGs)
 CONSECUTIVE_CPG="2"
 
 # Minimum CpG coverage required per allele for single CpGs to be considered for CpG ASM or in a DMR
@@ -90,7 +90,7 @@ dsub \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
   --logging gs://$OUTPUT_B/logging/ \
-  --output OUTPUT_DIR="gs://$REF_DATA_B/*" \
+  --output-recursive OUTPUT_DIR="gs://$REF_DATA_B" \
   --script ${SCRIPTS}/preparation.sh 
 
 ########################## Create BQ datasets and upload variant database ################################
@@ -838,3 +838,10 @@ dsub \
 TEST:
 
 JOIN by position when overlapping the the "raw" SNP by Bis-SNP and the dbSNP database.
+
+
+QUESTIONS FOR CATHERINE
+DMR EFFECT SIZE: OVER ALL CPGS, EVEN THE ONES THAT ARE NOT WELL COVERED? -- using only the well-covered CpG
+2 CONSECUTIVE CPGS (SIGNIFICANT, ASM IN SAME DIRECTION) AMONG ALL WELL COVERED CPGS?
+
+FIND THE 2 CONSECUTIVE CPGS IN THE PYTHON SCRIPT

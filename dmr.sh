@@ -139,7 +139,8 @@ bq query \
                 allele, 
                 read_id,
                 nb_cpg,
-                nb_sig_cpg 
+                nb_sig_cpg,
+                cpg
             FROM CPG_DMR
             WHERE 
                 pos_cpg >= min_cpg 
@@ -156,7 +157,8 @@ bq query \
                 allele,
                 ROUND(SAFE_DIVIDE(SUM(meth),SUM(cov)),5) AS methyl,
                 ANY_VALUE(nb_cpg) AS nb_cpg,
-                ANY_VALUE(nb_sig_cpg) AS nb_sig_cpg
+                ANY_VALUE(nb_sig_cpg) AS nb_sig_cpg,
+                ANY_VALUE(cpg) AS cpg
             FROM QUALIFYING_CPG
             GROUP BY snp_id, read_id, allele, chr_cpg
         ),
@@ -168,7 +170,8 @@ bq query \
                 ANY_VALUE(dmr_sup) AS dmr_sup,
                 ARRAY_AGG(STRUCT(methyl)) AS ref,
                 ANY_VALUE(nb_cpg) AS nb_cpg,
-                ANY_VALUE(nb_sig_cpg) AS nb_sig_cpg
+                ANY_VALUE(nb_sig_cpg) AS nb_sig_cpg,
+                ANY_VALUE(cpg) AS cpg
             FROM METHYL_PER_READ
             WHERE allele = 'REF'
             GROUP BY snp_id
@@ -198,7 +201,8 @@ bq query \
                 ref, 
                 alt,
                 nb_cpg,
-                nb_sig_cpg
+                nb_sig_cpg,
+                cpg
             FROM SNP_METHYL_JOIN
         )
         -- This removes about 15% of potential DMR
