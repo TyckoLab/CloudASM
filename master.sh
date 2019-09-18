@@ -45,11 +45,6 @@ REF_DATA_B="wgbs-ref-files"
 # Path of where you downloaded the Github scripts
 SCRIPTS="$HOME/GITHUB_REPOS/wgbs-asm/"
 
-# Create buckets for the analysis and for the ref genome / variant database
-gsutil mb -c nearline -l $REGION_ID gs://${OUTPUT_B} 
-gsutil mb -c nearline -l $REGION_ID gs://${REF_DATA_B}
-
-
 # Download the meta information about the samples and files to be analyzed.
 gsutil cp gs://$INPUT_B/samples.tsv $WD
 dos2unix samples.tsv 
@@ -78,10 +73,22 @@ while read SAMPLE ; do
 done < sample_id.txt
 
 
+########################## Create buckets, datasets, and sample info file ################################
+
+# Create a dataset on BigQuery for the samples to be analyzed for ASM
+bq --location=location mk \
+    --dataset \
+    ${PROJECT_ID}:${DATASET_ID}
+
+# Create buckets for the analysis and for the ref genome / variant database
+gsutil mb -c nearline -l $REGION_ID gs://${OUTPUT_B} 
+gsutil mb -c nearline -l $REGION_ID gs://${REF_DATA_B}
+
+
 ########################## Assemble and prepare the ref genome. Download variants database ################################
 
 # We assemble the ref genome, prepare it to be used by Bismark, and download/unzip the variant database
-# This step takes about 7 hours
+# This step takes about 6 hours
 
 dsub \
   --provider google-v2 \
@@ -94,24 +101,6 @@ dsub \
   --output-recursive OUTPUT_DIR="gs://$REF_DATA_B/grch38" \
   --script ${SCRIPTS}/preparation.sh 
 
-
-
-########################## Create BQ datasets and upload variant database ################################
-
-# Create a dataset on BigQuery for the samples to be analyzed for ASM
-bq --location=location mk \
-    --dataset \
-    ${PROJECT_ID}:${DATASET_ID}
-
-# Upload the database of SNPs to Big Query. (the first 57 rows are part of the header)
-bq --location=US load \
-               --replace=true \
-               --source_format=CSV \
-               --skip_leading_rows=57 \
-               --field_delimiter "\t" \
-               ${DATASET_ID}."grch38_db151" \
-               gs://${REF_DATA_B}/grch38/variants/All_20180418.vcf \
-               chr:STRING,pos:INTEGER,snp_id:STRING,ref:STRING,alt:STRING,qual:STRING,filter:STRING,info:STRING
 
 ########################## Unzip, rename, and split fastq files ################################
 
@@ -562,10 +551,7 @@ dsub \
   --wait
 
 
-# Delete raw VCF file
-
-
-########################## Export VCF to Big Query (one per sample) ################################
+########################## Export filtered VCF to Big Query (one per sample) ################################
 
 
 # Prepare TSV file
@@ -573,7 +559,7 @@ echo -e "--env SAMPLE\t--env VCF" > vcf_to_bq.tsv
 
 while read SAMPLE ; do
   for CHR in `seq 1 22` X Y ; do 
-    echo -e "$SAMPLE\tgs://$BUCKET/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}.vcf" >> vcf_to_bq.tsv
+    echo -e "$SAMPLE\tgs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}.vcf" >> vcf_to_bq.tsv
   done
   
   # Delete existing SAM on big query
@@ -599,6 +585,44 @@ dsub \
                chr:STRING,pos:STRING,snp_id:STRING,ref:STRING,alt:STRING,qual:FLOAT,filter:STRING,info:STRING,format:STRING,data:STRING' \
   --tasks vcf_to_bq.tsv \
   --wait
+
+########################## Export raw VCF to Big Query (one per sample) ################################
+
+# The raw VCFs are used to remove CpGs that overlap with a SNP in the raw VCF, confirmed by the variant database.
+
+
+# Prepare TSV file
+echo -e "--env SAMPLE\t--env VCF" > vcfCpG_to_bq.tsv
+
+while read SAMPLE ; do
+  for CHR in 22 `seq 1 22` X Y ; do 
+    echo -e "$SAMPLE\tgs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}_raw.vcf" >> vcfCpG_to_bq.tsv
+  done
+  
+  # Delete existing SAM on big query
+  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_forCpG
+done < sample_id.txt
+
+# We append all chromosomes files in the same file.
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --image ${DOCKER_GCP} \
+  --logging gs://$OUTPUT_B/logging/ \
+  --env DATASET_ID="${DATASET_ID}" \
+  --command 'bq --location=US load \
+               --replace=false \
+               --source_format=CSV \
+               --field_delimiter "\t" \
+               --skip_leading_rows 116 \
+               ${DATASET_ID}.${SAMPLE}_vcf_forCpG \
+               ${VCF} \
+               chr:STRING,pos:STRING,snp_id:STRING,ref:STRING,alt:STRING,qual:FLOAT,filter:STRING,info:STRING,format:STRING,data:STRING' \
+  --tasks vcfCpG_to_bq.tsv \
+  --wait
+
+# Intersect the database of raw VCFs with the variants database.
 
 ########################## Clean each VCF (one per chromosome) %=##################
 
@@ -837,14 +861,11 @@ DMR EFFECT SIZE: OVER ALL CPGS, EVEN THE ONES THAT ARE NOT WELL COVERED? -- usin
 2 CONSECUTIVE CPGS (SIGNIFICANT, ASM IN SAME DIRECTION) AMONG ALL WELL COVERED CPGS?
 
 TASKS:
-1/
-FIND THE 2 CONSECUTIVE CPGS IN THE PYTHON SCRIPT
 
-2/ THE LIST OF SNPS IN SNP_FOR_DMR AND HET_SNP IS NOT THE SAME. IT SHOULD BE.
+1/ REMOVE CPGS BASED ON A NEW LIST OF VARIANTS.
 
-3/ REMOVE CPGS BASED ON A NEW LIST OF VARIANTS.
+2/ ALIGN AGAINST NEW GENOME.
 
-4/ ALIGN AGAINST NEW GENOME.
+3/ BE CAREFUL AT THE CLASSIFICATION OF CHR COLUMN AFTER GOING INTO PYTHON
 
-5/ BE CAREFUL AT THE CLASSIFICATION OF CHR COLUMN AFTER GOING INTO PYTHON
 

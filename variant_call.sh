@@ -36,7 +36,7 @@ $JAVA/java -Xmx48g \
     -R $(dirname "${REF_GENOME}")/human_g1k_v37.fasta \
     -D ${VCF} \
     -I $(dirname "${BAM_BAI}")/${SAMPLE}_chr${CHR}_recal.bam \
-    -vfn1 $(dirname "${OUTPUT_DIR}")/${SAMPLE}.raw_chr$CHR.vcf \
+    -vfn1 $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_raw.vcf \
     -mmq 30 \
     -mbq 0 \
     -stand_call_conf 20 \
@@ -48,7 +48,7 @@ perl ${BIS_SNP}/sortByRefAndCor.pl \
     --k 1 \
     --c 2 \
     --tmp ${TMP_DIR} \
-    $(dirname "${OUTPUT_DIR}")/${SAMPLE}.raw_chr$CHR.vcf \
+    $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_raw.vcf \
     $(dirname "${REF_GENOME}")/human_g1k_v37.fasta.fai \
     > $(dirname "${BAM_BAI}")/${SAMPLE}.raw.sort_chr$CHR.vcf
 
