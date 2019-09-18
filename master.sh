@@ -375,6 +375,7 @@ dsub \
   --image $DOCKER_GENOMICS \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
+  --env CPG_COV="${CPG_COV}" \
   --command 'bq --location=US load \
                --replace=false \
                --source_format=CSV \
@@ -413,19 +414,6 @@ dsub \
   --wait
 
 
-# Delete raw CpGOB and CpGOT files from Big Query
-dsub \
-  --provider google-v2 \
-  --project $PROJECT_ID \
-  --preemptible \
-  --zones $ZONE_ID \
-  --image ${DOCKER_GCP} \
-  --logging gs://$OUTPUT_B/logging/ \
-  --env DATASET_ID="${DATASET_ID}" \
-  --command 'bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOB \
-             && bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOT' \
-  --tasks all_samples.tsv \
-  --wait
 
 ########################## Re-calibrate BAM  ################################
 
@@ -486,9 +474,11 @@ dsub \
   --wait
 
 
-########################## Export recal bam to Big Query ################################
+########################## Export recal bam to Big Query, clean, and delete from bucket ################################
 
 # The SAM file was created by the variant_call script
+# we do it before cleaning the variant call because it removes the SAM from the bucket, 
+# which takes a lot of splace.
 
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env SAM" > sam_to_bq.tsv
@@ -499,7 +489,7 @@ while read SAMPLE ; do
   done
   
   # Delete existing SAM on big query
-  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_recal_sam_raw
+  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_recal_sam_uploaded
 
 done < sample_id.txt
 
@@ -515,14 +505,13 @@ dsub \
                --replace=false \
                --source_format=CSV \
                --field_delimiter "\t" \
-               ${DATASET_ID}.${SAMPLE}_recal_sam_raw \
+               ${DATASET_ID}.${SAMPLE}_recal_sam_uploaded \
                ${SAM} \
                read_id:STRING,flag:INTEGER,chr:STRING,read_start:INTEGER,mapq:INTEGER,cigar:STRING,rnext:STRING,mate_read_start:INTEGER,insert_length:INTEGER,seq:STRING,score:STRING,bismark:STRING,picard_flag:STRING,read_g:STRING,genome_strand:STRING,NM_tag:STRING,meth:STRING,score_before_recal:STRING,read_strand:STRING' \
   --tasks sam_to_bq.tsv \
   --wait
 
-########################## Clean each SAM (one per sample) %=##################
-
+# Clean the SAM on BigQuery
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -535,7 +524,6 @@ dsub \
   --tasks all_samples.tsv \
   --wait
 
-
 # Delete the SAM files from the bucket (they take a lot of space) 
 # and the raw SAM files from Big Query
 dsub \
@@ -546,24 +534,78 @@ dsub \
   --image ${DOCKER_GCP} \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
-  --command 'gsutil rm ${SAM} && bq rm -f -t ${DATASET_ID}.${SAMPLE}_recal_sam_raw' \
+  --command 'gsutil rm ${SAM} && bq rm -f -t ${DATASET_ID}.${SAMPLE}_recal_sam_uploaded' \
   --tasks sam_to_bq.tsv \
   --wait
 
 
-########################## Export filtered VCF to Big Query (one per sample) ################################
+########################## Export raw VCF to Big Query (one per sample) ################################
 
+# The raw VCFs are used to remove CpGs that overlap with a SNP in the raw VCF, confirmed by the variant database.
+
+# Prepare TSV file
+echo -e "--env SAMPLE\t--env VCF" > raw_vcf_to_bq.tsv
+
+while read SAMPLE ; do
+  for CHR in `seq 1 22` X Y ; do 
+    echo -e "$SAMPLE\tgs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}_raw.vcf" >> raw_vcf_to_bq.tsv
+  done
+  
+  # Delete existing SAM on big query
+  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_raw_uploaded
+done < sample_id.txt
+
+# We append all chromosomes files in the same file.
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --image ${DOCKER_GCP} \
+  --logging gs://$OUTPUT_B/logging/ \
+  --env DATASET_ID="${DATASET_ID}" \
+  --command 'bq --location=US load \
+               --replace=false \
+               --source_format=CSV \
+               --field_delimiter "\t" \
+               --skip_leading_rows 116 \
+               ${DATASET_ID}.${SAMPLE}_vcf_raw_uploaded \
+               ${VCF} \
+               chr:STRING,pos:STRING,snp_id:STRING,ref:STRING,alt:STRING,qual:FLOAT,filter:STRING,info:STRING,format:STRING,data:STRING' \
+  --tasks raw_vcf_to_bq.tsv \
+  --wait
+
+# Clean the raw VCF that was uploaded and delete the "uploaded" table 
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --zones $ZONE_ID \
+  --image ${DOCKER_GCP} \
+  --logging gs://$OUTPUT_B/logging/ \
+  --env DATASET_ID="${DATASET_ID}" \
+  --script ${SCRIPTS}/clean_raw_vcf.sh \
+  --tasks all_samples.tsv \
+  --wait
+
+
+
+########################## Export to BQ and clean the filtered VCF ##################
+
+# Filter out the SNPs that are not within 500bp of a CpG that is at least 10x covered.
+# This removes about 5% of SNPs. Takes ~30min for the small chr.
+# Finds out where the SNP can be found with no ambiguity (CT, GA, or both)
 
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env VCF" > vcf_to_bq.tsv
 
 while read SAMPLE ; do
+  
   for CHR in `seq 1 22` X Y ; do 
-    echo -e "$SAMPLE\tgs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}.vcf" >> vcf_to_bq.tsv
+    echo -e "$SAMPLE\tgs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}_filtered.vcf" >> vcf_to_bq.tsv
   done
   
-  # Delete existing SAM on big query
-  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_raw
+  # Delete existing VCF files on Big Query
+  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_uploaded
+  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf
 
 done < sample_id.txt
 
@@ -580,60 +622,11 @@ dsub \
                --source_format=CSV \
                --field_delimiter "\t" \
                --skip_leading_rows 117 \
-               ${DATASET_ID}.${SAMPLE}_vcf_raw \
+               ${DATASET_ID}.${SAMPLE}_vcf_filtered_uploaded \
                ${VCF} \
                chr:STRING,pos:STRING,snp_id:STRING,ref:STRING,alt:STRING,qual:FLOAT,filter:STRING,info:STRING,format:STRING,data:STRING' \
   --tasks vcf_to_bq.tsv \
   --wait
-
-########################## Export raw VCF to Big Query (one per sample) ################################
-
-# The raw VCFs are used to remove CpGs that overlap with a SNP in the raw VCF, confirmed by the variant database.
-
-
-# Prepare TSV file
-echo -e "--env SAMPLE\t--env VCF" > vcfCpG_to_bq.tsv
-
-while read SAMPLE ; do
-  for CHR in 22 `seq 1 22` X Y ; do 
-    echo -e "$SAMPLE\tgs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}_raw.vcf" >> vcfCpG_to_bq.tsv
-  done
-  
-  # Delete existing SAM on big query
-  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_forCpG
-done < sample_id.txt
-
-# We append all chromosomes files in the same file.
-dsub \
-  --provider google-v2 \
-  --project $PROJECT_ID \
-  --zones $ZONE_ID \
-  --image ${DOCKER_GCP} \
-  --logging gs://$OUTPUT_B/logging/ \
-  --env DATASET_ID="${DATASET_ID}" \
-  --command 'bq --location=US load \
-               --replace=false \
-               --source_format=CSV \
-               --field_delimiter "\t" \
-               --skip_leading_rows 116 \
-               ${DATASET_ID}.${SAMPLE}_vcf_forCpG \
-               ${VCF} \
-               chr:STRING,pos:STRING,snp_id:STRING,ref:STRING,alt:STRING,qual:FLOAT,filter:STRING,info:STRING,format:STRING,data:STRING' \
-  --tasks vcfCpG_to_bq.tsv \
-  --wait
-
-# Intersect the database of raw VCFs with the variants database.
-
-########################## Clean each VCF (one per chromosome) %=##################
-
-# Filter out the SNPs that are not within 500bp of a CpG that is at least 10x covered.
-# This removes about 5% of SNPs. Takes ~30min for the small chr.
-# Finds out where the SNP can be found with no ambiguity (CT, GA, or both)
-
-# Delete potentially old big query tables 
-while read SAMPLE ; do
-  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf
-done < sample_id.txt
 
 # Clean the VCF -- create temporary tables (one per chr)
 dsub \
@@ -666,17 +659,10 @@ dsub \
   --wait
 
 # Delete all raw VCF files from BigQuery
-dsub \
-  --provider google-v2 \
-  --project $PROJECT_ID \
-  --zones $ZONE_ID \
-  --image ${DOCKER_GCP} \
-  --logging gs://$OUTPUT_B/logging/ \
-  --env DATASET_ID="${DATASET_ID}" \
-  --command 'bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_raw' \
-  --tasks all_samples.tsv \
-  --wait
-
+awk 'BEGIN { FS=OFS="\t" } {if (NR!=1) print $0}' all_samples.tsv > just_samples.txt
+while read SAMPLE ; do 
+  bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_raw_uploaded
+done < just_samples.txt
 
 ########################## Find the read IDs that overlap the snp ##################
 
@@ -740,6 +726,7 @@ dsub \
   --env OUTPUT_B="${OUTPUT_B}" \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
+  --env SNP_SCORE="${SNP_SCORE}"
   --script ${SCRIPTS}/read_genotype.sh \
   --tasks all_samples.tsv \
   --wait
@@ -862,10 +849,16 @@ DMR EFFECT SIZE: OVER ALL CPGS, EVEN THE ONES THAT ARE NOT WELL COVERED? -- usin
 
 TASKS:
 
-1/ REMOVE CPGS BASED ON A NEW LIST OF VARIANTS.
-
 2/ ALIGN AGAINST NEW GENOME.
 
 3/ BE CAREFUL AT THE CLASSIFICATION OF CHR COLUMN AFTER GOING INTO PYTHON
 
+4/ Used the raw VCF file until the vcf_reads_genotype. Need to generate a clean list of snp_ids from the vcf filtered after excluding
 
+5/ We exclude the CpGs overlapping SNPs from the single-ASM calculation. Do we remove them from the DMR as well? 
+--> probably for this reason that we found many more DMRs
+In cpg_genotype.sh would be wise to create a context file where the CpGs were removed, for single-ASM calculation and DMR.
+
+6/ Problem: the CpG coverage on REF and ALT depends on the SNP we consider.
+
+Put all CpGs in the final DMR table -- if we want to identify later CpGs that were not luck enoughto be on a read including a SNP

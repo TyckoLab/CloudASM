@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # Create a table with a variant near a CpG in a 500bp window
+# Remove the rows where ref and alt are not single nucleotides
+# Remove the rows where the snp_id is not in the form of "rs"
 bq query \
     --use_legacy_sql=false \
     --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_chr${CHR}_tmp \
@@ -17,7 +19,7 @@ bq query \
           alt,
           SAFE_CAST(pos as INT64) as pos
         FROM 
-          ${DATASET_ID}.${SAMPLE}_vcf_raw
+          ${DATASET_ID}.${SAMPLE}_vcf_raw_uploaded
         WHERE
           -- demand that the SNP is like rs-
           snp_id LIKE '%rs%'

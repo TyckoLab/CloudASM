@@ -63,7 +63,8 @@ bq query \
         FROM 
             MERGED_STRANDS
         WHERE 
-            cov >= 10
+            -- 2 x the minimum coverage required by allele (no allele distinction at this stage)
+            cov >= 2*${CPG_COV}
     "
 
 # Filter out from both_context_tmp the CpG sites that do not have at least 10x cov 
@@ -144,3 +145,7 @@ bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_both_context_tmp
 bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_methyperc_bedgraph
 bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_CpGcov_bedgraph
 bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_merged_context_bed
+
+# Delete raw files
+bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOB
+bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOT

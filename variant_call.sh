@@ -55,13 +55,14 @@ perl ${BIS_SNP}/sortByRefAndCor.pl \
 # maxCOV: beyond this depth value, we ignore because we think it's a wrong region.
 
 # Remove false positives by removing the calls on super high-coverage regions"
+# This removes about 7% of the SNPs identified in "raw"
 $JAVA/java  -Xmx48g -Djava.io.tmpdir=${TMP_DIR} \
     -jar ${BIS_SNP}/BisSNP-0.82.2.jar \
     -L $CHR \
     -R $(dirname "${REF_GENOME}")/human_g1k_v37.fasta \
     -T VCFpostprocess \
     -oldVcf $(dirname "${BAM_BAI}")/${SAMPLE}.raw.sort_chr$CHR.vcf \
-    -newVcf $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}.vcf \
+    -newVcf $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_filtered.vcf \
     -snpVcf $(dirname "${BAM_BAI}")/${SAMPLE}.raw.sort_chr$CHR.vcf \
     -o $(dirname "${OUTPUT_DIR}")/${SAMPLE}.snp.summary_chr$CHR.txt \
     -maxCov 200 \

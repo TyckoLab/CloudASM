@@ -1,6 +1,52 @@
 #!/bin/bash
 
-# This file will be used to compute the DMRs
+# We remove all CpGs where the C or G overlap with a SNP found in the "raw" Bis-SNP database
+# 60 seconds for 2 chromosomes
+# That excludes about 5% of all CGs.
+
+bq query \
+    --use_legacy_sql=false \
+    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_context_filtered \
+    --replace=true \
+    "
+    WITH 
+        CONTEXT AS (
+            SELECT * 
+            FROM ${DATASET_ID}.${SAMPLE}_context
+        ),
+        VCF_RAW AS (
+            SELECT 
+                chr_snp, 
+                pos_snp AS pos_snp_c, 
+                pos_snp + 1 AS pos_snp_g
+            FROM ${DATASET_ID}.${SAMPLE}_snps
+        ),
+        CONTEXT_FILTERED_C AS (
+            SELECT distinct chr, pos FROM CONTEXT
+            EXCEPT DISTINCT
+            SELECT distinct chr_snp, pos_snp_c FROM VCF_RAW
+        ),
+        CONTEXT_FILTERED_CG AS (
+            SELECT chr, pos FROM CONTEXT_FILTERED_C
+            EXCEPT DISTINCT
+            SELECT chr_snp, pos_snp_g FROM VCF_RAW
+        ),
+        FILTERED AS (
+            SELECT chr AS chr_filt, pos AS pos_filt
+            FROM CONTEXT_FILTERED_CG
+        ),
+        CONTEXT_FILTERED_READ AS (
+        SELECT * FROM FILTERED
+        INNER JOIN CONTEXT
+        ON chr_filt = chr AND pos = pos_filt
+        )
+        SELECT chr, pos, meth, cov, read_id FROM CONTEXT_FILTERED_READ
+        --SELECT * FROM VCF_RAW
+        "
+
+# Create a table with as many rows as possible for CpG x SNP x read_id
+# 90% of CpGs are dropped because their respective reads could not be linked to a REF or ALT of any SNP
+# This table will be used in the DMR calculation.
 bq query \
     --use_legacy_sql=false \
     --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_cpg_read_genotype \
@@ -9,14 +55,14 @@ bq query \
     WITH 
         CONTEXT AS (
             SELECT * 
-            FROM ${DATASET_ID}.${SAMPLE}_context
+            FROM ${DATASET_ID}.${SAMPLE}_context_filtered
         ),
         GENOTYPE AS (
             SELECT 
                 snp_id,
                 pos AS snp_pos,
                 read_id AS geno_read_id,
-                allele 
+                allele
             FROM ${DATASET_ID}.${SAMPLE}_vcf_reads_genotype
         ),
         -- create a table with each combination of snp, CpG, read_id, REF, ALT
@@ -44,6 +90,9 @@ bq query \
     --replace=true \
         "
         WITH 
+        ----------------------------------------------------------
+        -- Find CpGs that are at least covered 5x on both REF and ALT for a SNP
+        ----------------------------------------------------------
         CLEAN AS (
             SELECT * FROM ${DATASET_ID}.${SAMPLE}_cpg_read_genotype
         ),
@@ -75,8 +124,7 @@ bq query \
             ON chr = chr_alt AND 
                 pos = pos_alt AND
                 snp_id = snp_id_alt
-        ),
-        REF_AND_ALT_CLEAN AS (
+        )
             SELECT 
                 chr,
                 pos,
@@ -88,52 +136,7 @@ bq query \
             FROM REF_AND_ALT
             -- we require that each allele is covered 5x
             WHERE ref_cov >=${CPG_COV} AND alt_cov >= ${CPG_COV}
-        ),
-        ----------------------------------------------------------
-        -- keep CpG that where the C does not overlap with any SNP
-        ----------------------------------------------------------
-        CPG_NO_SNP_ON_C AS (
-            SELECT chr,pos 
-                FROM REF_AND_ALT_CLEAN
-            EXCEPT DISTINCT
-            SELECT chr,pos 
-                FROM ${DATASET_ID}.${SAMPLE}_vcf_reads_genotype
-        ),
-        CPG_NO_SNP_ON_C_AND_G AS (
-            SELECT chr,pos 
-                FROM CPG_NO_SNP_ON_C
-            EXCEPT DISTINCT
-            SELECT chr, pos - 1 AS pos 
-                FROM ${DATASET_ID}.${SAMPLE}_vcf_reads_genotype
-        ),
-        REF_AND_ALT_CLEAN_FORMATED AS (
-            SELECT
-                chr AS chr_tmp,
-                pos AS pos_tmp,
-                snp_id,
-                ref_cov,
-                ref_meth,
-                alt_cov,
-                alt_meth
-            FROM REF_AND_ALT_CLEAN 
-        ),
-        CPG_GENOTYPE AS (
-            SELECT * 
-                FROM CPG_NO_SNP_ON_C_AND_G 
-            INNER JOIN 
-            REF_AND_ALT_CLEAN_FORMATED
-            ON chr = chr_tmp AND pos = pos_tmp
-        )
-        SELECT
-            chr,
-            pos,
-            snp_id,
-            ref_cov,
-            ref_meth,
-            alt_cov,
-            alt_meth
-            FROM CPG_GENOTYPE
-    "
+        "
 
 # Save file in bucket to use it in a Python script to compute a Fisher exact test
 bq extract \

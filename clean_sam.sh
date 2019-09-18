@@ -16,7 +16,7 @@ bq query \
             seq,
             score_before_recal
         FROM
-            ${DATASET_ID}.${SAMPLE}_recal_sam_raw
+            ${DATASET_ID}.${SAMPLE}_recal_sam_uploaded
         "
 
 
