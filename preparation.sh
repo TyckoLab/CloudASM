@@ -5,56 +5,63 @@
 PICARD="/genomics-packages/picard-tools-1.97"
 
 # Create directories
-mkdir -p $(dirname "${OUTPUT_DIR}")/grch38/variants # For variants
-mkdir -p $(dirname "${OUTPUT_DIR}")/grch38/ref_genome # For the ref genome
+mkdir -p $(dirname "${OUTPUT_DIR}")/$GENOME/variants # For variants
+mkdir -p $(dirname "${OUTPUT_DIR}")/$GENOME/ref_genome # For the ref genome
 
-##########################  Variant database ##########################
+FOLDER=$(dirname "${OUTPUT_DIR}")/$GENOME
 
-# Download database of variants
-wget https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/All_20180418.vcf.gz
+# Reference discussion on the ref genome https://lh3.github.io/2017/11/13/which-human-reference-genome-to-use
 
-# Unzip database and move to the right folder
-gunzip All_20180418.vcf.gz && mv All_20180418.vcf $(dirname "${OUTPUT_DIR}")/grch38/variants/All_20180418.vcf 
+############################################ Reference genome
 
-##########################   Reference genome ##########################
+if [ $GENOME == "hg19" ] ; then
+    GENOME_URL="ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/technical/reference/human_g1k_v37.fasta.gz"
+else
+    # GRCh38
+    GENOME_URL="ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz"
+fi
 
-# Download all files
-wget ftp://ftp.ensembl.org/pub/release-87/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.*.fa.gz
+# Download zipped ref genome
+wget $GENOME_URL
 
-# Unzip them
-gunzip Homo_sapiens.GRCh38.dna.chromosome.*
+# Unzip file 
+gunzip $(basename "$GENOME_URL") 
 
-# Append all files in a single file
-touch $(dirname "${OUTPUT_DIR}")/grch38/ref_genome/grch38.fa
+# Move the file into the output folder
+mv $(basename "${GENOME_URL%.gz}") ${FOLDER}/ref_genome/$(basename "${GENOME_URL%.gz}")
 
-for CHR in `seq 1 22` X Y MT ; do 
-    cat Homo_sapiens.GRCh38.dna.chromosome.${CHR}.fa >> $(dirname "${OUTPUT_DIR}")/grch38/ref_genome/grch38.fa
-done
-
-
-##########################   Create Bisulfite-converted genome ##########################
-
-echo "Creating bisulfite converted genome"
-bismark_genome_preparation --bowtie2 --verbose $(dirname "${OUTPUT_DIR}")/grch38/ref_genome
-
-
-##########################    Create additional files for Bis-SNP ##########################
-
-# To be used by Bis-SNP, we need to create a dict and *fai file.
-
-# Create the fasta sequence dictionary file. 
-# This produces a SAM-style header file describing the contents of our fasta file.
-
+# Create the fasta sequence dictionary file (.dict file), required by Bis-SNP
 java -jar ${PICARD}/CreateSequenceDictionary.jar \
-    R= $(dirname "${OUTPUT_DIR}")/grch38/ref_genome/grch38.fa \
-    O= $(dirname "${OUTPUT_DIR}")/grch38/ref_genome/grch38.dict
+    R= ${FOLDER}/ref_genome/$(basename "${GENOME_URL%.gz}") \
+    O= ${FOLDER}/ref_genome/$(basename "${GENOME_URL%.f*}").dict
 
-# Create a fasta index file
-# This file describes byte offsets in the fasta file for each contig, allowing us to compute exactly where 
-# a particular reference base at contig:pos is in the fasta file.
+# Create a fasta index file, required by bis-snp (*.fai)
+samtools faidx ${FOLDER}/ref_genome/$(basename "${GENOME_URL%.gz}")
 
-samtools faidx $(dirname "${OUTPUT_DIR}")/grch38/ref_genome/grch38.fa
-
-# Display all content
+echo "After dict and fai"
 ls -lhR $(dirname "${OUTPUT_DIR}")
+
+#Create bisulfite-converted genome, required by Bismark (Takes ~3 hours)
+bismark_genome_preparation --bowtie2 --verbose ${FOLDER}/ref_genome
+
+
+############################################ Variant database
+
+if [ $GENOME == "hg19" ] ; then
+    VARIANTS_URL="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/All_20180423.vcf.gz"
+else
+    # GRCH38 -- the latest SNP database as of Sept 2019 is db151
+    VARIANTS_URL="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/All_20180418.vcf.gz"
+fi
+
+
+# Download zipped variant database
+wget $VARIANTS_URL
+
+# Unzip file in the output folder
+gunzip $(basename "$VARIANTS_URL")
+
+# Move the file
+mv $(basename "${VARIANTS_URL%.gz}") ${FOLDER}/variants/$(basename "${VARIANTS_URL%.gz}")
+
 

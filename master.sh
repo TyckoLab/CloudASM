@@ -1,6 +1,9 @@
 
 ########################## ASM Variables ################################
 
+# Reference genome
+GENOME="hg19" # or "GRCh38"
+
 # Effect size required at the DMR level for an ASM.
 DMR_EFFECT="0.2"
 
@@ -15,11 +18,11 @@ CPG_PER_DMR="3"
 CONSECUTIVE_CPG="2"
 
 # Minimum reading score of the SNP
-SNP_SCORE="63" # In ASCII (which we use in BigQuery), 63 correponds to a quality score of 30. See this table: https://www.drive5.com/usearch/manual/quality_score.html
+SNP_SCORE="63" # In ASCII, 63 correponds to a quality score of 30. See this table: https://www.drive5.com/usearch/manual/quality_score.html
 
-########################## Docker Variables ################################
+########################## Docker Images used by the pipeline ################################
 
-# Custom image with the genomics packages
+# Genomic packages 
 DOCKER_GENOMICS="gcr.io/hackensack-tyco/wgbs-asm"
 
 # Light-weight python image with statistical packages.
@@ -41,9 +44,15 @@ DATASET_ID="wgbs_asm"
 # Cloud storage variables
 OUTPUT_B="em-encode-deux" # will be created by the script
 REF_DATA_B="wgbs-ref-files" 
+REF_GENOME="gs://$REF_DATA_AB/$GENOME/ref_genome"
+ALL_VARIANTS="gs://$REF_DATA_AB/$GENOME/variants/*.vcf"
 
 # Path of where you downloaded the Github scripts
 SCRIPTS="$HOME/GITHUB_REPOS/wgbs-asm/"
+
+########################## Download sample info file ################################
+
+# Refer to the Github on how to prepare the sample info file
 
 # Download the meta information about the samples and files to be analyzed.
 gsutil cp gs://$INPUT_B/samples.tsv $WD
@@ -97,9 +106,11 @@ dsub \
   --image $DOCKER_GENOMICS \
   --disk-size 800 \
   --machine-type n1-standard-4 \
+  --env GENOME="${GENOME}" \
   --logging gs://$OUTPUT_B/logging/ \
-  --output-recursive OUTPUT_DIR="gs://$REF_DATA_B/grch38" \
-  --script ${SCRIPTS}/preparation.sh 
+  --output-recursive OUTPUT_DIR="gs://${REF_DATA_B}/${GENOME}" \
+  --script ${SCRIPTS}/preparation.sh \
+  --wait
 
 
 ########################## Unzip, rename, and split fastq files ################################
@@ -126,7 +137,8 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --logging gs://$OUTPUT_B/logging/ \
-  --disk-size 10 \
+  --machine-type n1-standard-4 \
+  --disk-size 400 \
   --preemptible \
   --image $DOCKER_GENOMICS \
   --command 'gunzip ${ZIPPED} && \
@@ -233,7 +245,7 @@ dsub \
   --preemptible \
   --disk-size 40 \
   --logging gs://$OUTPUT_B/logging/ \
-  --input-recursive REF_GENOME="gs://$REF_DATA_B/grc37" \
+  --input-recursive REF_GENOME="${REF_GENOME}" \
   --command 'bismark_nozip \
                 -q \
                 --bowtie2 \
@@ -440,8 +452,8 @@ dsub \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
   --logging gs://$OUTPUT_B/logging/ \
-  --input REF_GENOME="gs://$REF_DATA_B/grc37/*" \
-  --input VCF="gs://$REF_DATA_B/dbSNP150_grc37_GATK/no_chr_dbSNP150_GRCh37.vcf" \
+  --input REF_GENOME="${REF_GENOME}/*" \
+  --input ALL_VARIANTS="${ALL_VARIANTS}" \
   --script ${SCRIPTS}/bam_recalibration.sh \
   --tasks bam_recalibration.tsv \
   --wait
@@ -467,8 +479,8 @@ dsub \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
   --logging gs://$OUTPUT_B/logging/ \
-  --input REF_GENOME="gs://$REF_DATA_B/grc37/*" \
-  --input VCF="gs://$REF_DATA_B/dbSNP150_grc37_GATK/no_chr_dbSNP150_GRCh37.vcf" \
+  --input REF_GENOME="${REF_GENOME}/*" \
+  --input ALL_VARIANTS="${ALL_VARIANTS}" \
   --script ${SCRIPTS}/variant_call.sh \
   --tasks variant_call.tsv \
   --wait
