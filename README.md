@@ -75,6 +75,13 @@ All samples you want to analyze need to be in the same bucket (which we call her
 | A549 | ENCFF565VHN | ENCFF565VHN.fastq.gz | L02 | R1 | A549_L02.R1 | 84 |
 | A549 | ENCFF251FLW | ENCFF251FLW.fastq.gz | L02 | R2 | A549_L02.R2 | 84 |
 
+
+sample	bucket_url	lane_id	read_id	file_new_name
+gm12878	gs://encode-wgbs/gm12878/ENCFF113KRQ.fastq.gz	L01	R2	gm12878_L01.R2
+gm12878	gs://encode-wgbs/gm12878/ENCFF585BXF.fastq.gz	L02	R1	gm12878_L02.R1
+gm12878	gs://encode-wgbs/gm12878/ENCFF798RSS.fastq.gz	L01	R1	gm12878_L01.R1
+gm12878	gs://encode-wgbs/gm12878/ENCFF851HAT.fastq.gz	L02	R2	gm12878_L02.R2
+
 The output of the analysis will be done in a different bucket (which we call here `gs://ASM`). 
 
 Our pipeline requires a very specific combination of genomics packages. We have put together a Docker-generated image on Cloud Build at `gcr.io/hackensack-tyco/wgbs-asm`. 
@@ -183,3 +190,28 @@ Note that the header of this VCF file is:
 
 
 gatk
+
+
+
+####
+
+
+Test on gm12878
+174 GB of zipped fastq files.
+
+
+## Re-run failed jobs
+
+```
+JOB="align_rerun"
+dstat --provider google-v2 --project PROJECT --jobs 'JOB-ID' --users 'USER' --status '*' > JOB.log
+cat $JOB.log | grep -v Success | tail -n +3 | awk '{print $2}' > ${JOB}_failed.txt
+sed -i '$ d' ${JOB}_failed.txt
+
+
+head -1 ${JOB}.tsv > ${JOB}_rerun.tsv
+
+while read INDEX ; do
+  ROW=$(($INDEX +1))
+  sed -n "${ROW}p" ${JOB}.tsv >> ${JOB}_rerun.tsv
+done < ${JOB}_failed.txt

@@ -15,7 +15,7 @@ CPG_COV="5"
 CPG_PER_DMR="3"
 
 # Number of consecutive CpGs with significant ASM in the same direction (among all well-covered CpGs)
-CONSECUTIVE_CPG="2"
+CONSECUTIVE_CPG="2" 
 
 # Minimum reading score of the SNP
 SNP_SCORE="63" # In ASCII, 63 correponds to a quality score of 30. See this table: https://www.drive5.com/usearch/manual/quality_score.html
@@ -39,13 +39,14 @@ REGION_ID="us-central1"
 ZONE_ID="us-central1-b"
 
 # Big Query variables
-DATASET_ID="wgbs_asm" 
+DATASET_ID="wgbs_encode" 
 
 # Cloud storage variables
-OUTPUT_B="em-encode-deux" # will be created by the script
+INPUT_B="encode-wgbs"
+OUTPUT_B="em-encode-paper" # will be created by the script
 REF_DATA_B="wgbs-ref-files" 
-REF_GENOME="gs://$REF_DATA_AB/$GENOME/ref_genome"
-ALL_VARIANTS="gs://$REF_DATA_AB/$GENOME/variants/*.vcf"
+REF_GENOME="gs://$REF_DATA_B/$GENOME/ref_genome"
+ALL_VARIANTS="gs://$REF_DATA_B/$GENOME/variants/*.vcf"
 
 # Path of where you downloaded the Github scripts
 SCRIPTS="$HOME/GITHUB_REPOS/wgbs-asm/"
@@ -54,8 +55,12 @@ SCRIPTS="$HOME/GITHUB_REPOS/wgbs-asm/"
 
 # Refer to the Github on how to prepare the sample info file
 
-# Download the meta information about the samples and files to be analyzed.
-gsutil cp gs://$INPUT_B/samples.tsv $WD
+# Create a local folder on the computer 
+mkdir -p $HOME/"wgbs" 
+cd $HOME/"wgbs" 
+
+# Download the metadata to the local folder
+gsutil cp gs://$INPUT_B/samples.tsv $HOME/"wgbs"
 dos2unix samples.tsv 
 
 # List of samples
@@ -85,19 +90,20 @@ done < sample_id.txt
 ########################## Create buckets, datasets, and sample info file ################################
 
 # Create a dataset on BigQuery for the samples to be analyzed for ASM
-bq --location=location mk \
-    --dataset \
-    ${PROJECT_ID}:${DATASET_ID}
+#(Note: very few regions are available for Big Query datasets)
+bq --location=us-east4 mk --dataset ${PROJECT_ID}:${DATASET_ID}
 
 # Create buckets for the analysis and for the ref genome / variant database
-gsutil mb -c nearline -l $REGION_ID gs://${OUTPUT_B} 
-gsutil mb -c nearline -l $REGION_ID gs://${REF_DATA_B}
+gsutil mb -c standard -l $REGION_ID gs://${OUTPUT_B} 
+gsutil mb -c standard -l $REGION_ID gs://${REF_DATA_B}
 
 
 ########################## Assemble and prepare the ref genome. Download variants database ################################
 
 # We assemble the ref genome, prepare it to be used by Bismark, and download/unzip the variant database
 # This step takes about 6 hours
+
+# Do it only once! 
 
 dsub \
   --provider google-v2 \
@@ -115,21 +121,20 @@ dsub \
 
 ########################## Unzip, rename, and split fastq files ################################
 
+# Takes ~2 hours per 80G of zipped fastq file.
+
 # Create an TSV file with parameters for the job
+echo -e '--input ZIPPED\t--env FASTQ\t--output OUTPUT_FILES' > decompress.tsv
+
 awk -v INPUT_B="${INPUT_B}" \
     -v OUTPUT_B="${OUTPUT_B}" \
     'BEGIN { FS=OFS="\t" } 
     {if (NR!=1) 
-        print "gs://"INPUT_B"/"$1"/"$2, 
-              $5".fastq", 
-              "gs://"OUTPUT_B"/"$1"/split_fastq/*.fastq" 
+        print $2, $5, "gs://"OUTPUT_B"/"$1"/split_fastq/*.fastq" 
      }' \
-    samples.tsv > decompress.tsv 
+    samples.tsv >> decompress.tsv 
 
-# Add headers to the file
-sed -i '1i --input ZIPPED\t--env FASTQ\t--output OUTPUT_FILES' decompress.tsv
-
-# Creating ~ 4,000 pairs of fastq files for a 1.2M row split.
+# Creating ~ 4,000 pairs of 1.2M-row fastq files if the zipped fastq file is ~80GB.
 
 # Launch job
 dsub \
@@ -137,10 +142,10 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --logging gs://$OUTPUT_B/logging/ \
-  --machine-type n1-standard-4 \
-  --disk-size 400 \
+  --machine-type n1-standard-2 \
+  --disk-size 2000 \
   --preemptible \
-  --image $DOCKER_GENOMICS \
+  --image $DOCKER_GCP \
   --command 'gunzip ${ZIPPED} && \
              mv ${ZIPPED%.gz} $(dirname "${ZIPPED}")/${FASTQ} && \
              split -l 1200000 \
@@ -152,6 +157,9 @@ dsub \
   --wait
 
 ########################## Trim a pair of fastq shards ################################
+
+# Takes about 5 minutes per pair of reads.
+# When using preemptive machines, we have experienced a 0.75% failure rate.
 
 # Create an TSV file with parameters for the job
 rm -f trim.tsv && touch trim.tsv
@@ -182,7 +190,7 @@ sed -i '1i --input R1\t--input R2\t--output FOLDER' trim.tsv
 # Print a message in the terminal
 echo "There are" $(cat trim.tsv | wc -l) "to be launched"
 
-# Submit job. Make sure you have enough resources
+# Submit job. 
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -207,6 +215,9 @@ dsub \
 
 
 ########################## Align a pair of fastq shards ################################
+
+# Takes ~10 min per pair of trimmed reads
+# About 10% of jobs will fail because GCP will claim back the preemptive machines
 
 # Prepare TSV file
 echo -e "--input R1\t--input R2\t--output OUTPUT_DIR" > align.tsv
@@ -261,6 +272,7 @@ dsub \
   --tasks align.tsv \
   --wait
 
+
 ########################## Split chard's BAM by chromosome ################################
 
 # Prepare TSV file
@@ -289,14 +301,13 @@ dsub \
   --tasks split_bam.tsv \
   --wait
 
-
 ########################## Merge all BAMs by chromosome, clean them ################################
 
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env CHR\t--input BAM_FILES\t--output OUTPUT_DIR" > merge_bam.tsv
 
 while read SAMPLE ; do
-  for CHR in `seq 1 22` X Y ; do 
+  for CHR in `seq 21 21` ; do 
   echo -e "${SAMPLE}\t${CHR}\tgs://$OUTPUT_B/$SAMPLE/bam_per_chard_and_chr/*chr${CHR}.bam\tgs://$OUTPUT_B/$SAMPLE/bam_per_chr/*" >> merge_bam.tsv
   done
 done < sample_id.txt
@@ -304,13 +315,16 @@ done < sample_id.txt
 # Print a message in the terminal
 echo "There are" $(cat merge_bam.tsv | wc -l) "to be launched"
 
+# 500 to 2000
+# 500 was an error
+
 # Submit job
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --machine-type n1-highmem-8 \
   --preemptible \
-  --disk-size 30 \
+  --disk-size 120 \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
   --logging gs://$OUTPUT_B/logging/ \
@@ -339,7 +353,7 @@ dsub \
   --project $PROJECT_ID \
   --preemptible \
   --machine-type n1-highmem-8 \
-  --disk-size 50 \
+  --disk-size 120 \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
   --logging gs://$OUTPUT_B/logging/ \
@@ -360,6 +374,16 @@ dsub \
                   --ignore_3prime_r2 2' \
   --tasks methyl.tsv \
   --wait
+
+
+
+# Delete split fastq files to save space on the bucket.
+while read SAMPLE ; do
+  touch split_deleted_after_alignment.log
+  gsutil cp split_deleted_after_alignment.log gs://$OUTPUT_B/$SAMPLE/split_fastq/deleted_after_alignment.log
+  gsutil rm gs://$OUTPUT_B/$SAMPLE/split_fastq/*.fastq
+done < sample_id.txt
+
 
 
 ################################# Export context files in Big Query ##################
