@@ -12,6 +12,7 @@ mkdir -p ${TMP_DIR}
 
 # Sort by coordinate (required by Bis-SNP)
 java \
+      -Djava.io.tmpdir=${TMP_DIR} \
       -Xmx48g \
       -jar $PICARD/SortSam.jar \
       I=${BAM} \
@@ -19,25 +20,39 @@ java \
       SORT_ORDER=coordinate \
       MAX_RECORDS_IN_RAM=9000000
 
-# Create index file
+echo "Create index file"
 samtools index $(dirname "${BAM}")/${SAMPLE}_chr${CHR}_sorted.bam
 
-# Create recal file. This requires a specific version of Java.
-$JAVA/java -Djava.io.tmpdir=${TMP_DIR} \
+echo "FOLDER CONTENT AFTER CREATING INDEX FILE"
+ls -lh $(dirname "${BAM}")
+echo "********************"
+
+
+echo "***********************************"
+echo "Create recal file. This requires a specific version of Java."
+echo 
+echo "***********************************"
+$JAVA/java \
+    -Djava.io.tmpdir=${TMP_DIR} \
     -jar -Xmx48g ${BIS_SNP}/BisSNP-0.82.2.jar \
     -L $CHR \
     -R $(dirname "${REF_GENOME}")/human_g1k_v37.fasta \
     -I $(dirname "${BAM}")/${SAMPLE}_chr${CHR}_sorted.bam \
     -T BisulfiteCountCovariates \
-    -knownSites $VCF \
+    -knownSites ${ALL_VARIANTS} \
     -cov ReadGroupCovariate \
     -cov QualityScoreCovariate \
     -cov CycleCovariate \
     -recalFile $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.csv \
     -nt 10
 
-# # Generates a re-calibrated BAM and BAI file
-$JAVA/java -Djava.io.tmpdir=${TMP_DIR} \
+echo "FOLDER CONTENT AFTER RECAL FILE"
+ls -lh $(dirname "${BAM}")
+echo "********************"
+
+echo  "Generates a re-calibrated BAM and BAI file"
+$JAVA/java \
+    -Djava.io.tmpdir=${TMP_DIR} \
     -jar -Xmx48g ${BIS_SNP}/BisSNP-0.82.2.jar \
     -L $CHR \
     -R $(dirname "${REF_GENOME}")/human_g1k_v37.fasta \
@@ -47,8 +62,10 @@ $JAVA/java -Djava.io.tmpdir=${TMP_DIR} \
     -recalFile $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.csv \
     --max_quality_score 40
 
-#Create a report for the recalibration
-$JAVA/java -Xmx48g \
+echo "Create a report for the recalibration"
+$JAVA/java \
+    -Djava.io.tmpdir=${TMP_DIR} \
+    -Xmx48g \
     -jar ${BIS_SNP}/BisulfiteAnalyzeCovariates-0.69.jar \
     -recalFile $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.csv \
     -outputDir $(dirname "${OUTPUT_DIR}") \

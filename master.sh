@@ -303,20 +303,16 @@ dsub \
 
 ########################## Merge all BAMs by chromosome, clean them ################################
 
+# May take up to 5 hours for the largest chromosomes.
+
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env CHR\t--input BAM_FILES\t--output OUTPUT_DIR" > merge_bam.tsv
 
 while read SAMPLE ; do
-  for CHR in `seq 21 21` ; do 
+  for CHR in `seq 1 22` X Y ; do 
   echo -e "${SAMPLE}\t${CHR}\tgs://$OUTPUT_B/$SAMPLE/bam_per_chard_and_chr/*chr${CHR}.bam\tgs://$OUTPUT_B/$SAMPLE/bam_per_chr/*" >> merge_bam.tsv
   done
 done < sample_id.txt
-
-# Print a message in the terminal
-echo "There are" $(cat merge_bam.tsv | wc -l) "to be launched"
-
-# 500 to 2000
-# 500 was an error
 
 # Submit job
 dsub \
@@ -332,9 +328,10 @@ dsub \
   --tasks merge_bam.tsv \
   --wait
 
+
 ################################# Net methylation call
 
-# Note: this step requires one BAM file per chromosome (in "bam_per_chr") 
+# May take up to 5 hours for the largest chromosomes
 
 # Prepare TSV file
 echo -e "--input BAM\t--output OUTPUT_DIR" > methyl.tsv
@@ -345,15 +342,13 @@ while read SAMPLE ; do
   done
 done < sample_id.txt
 
-# Print a message in the terminal
-echo "There are" $(tail -n +2 methyl.tsv | wc -l) "to be launched"
-
+# Launch job
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --preemptible \
   --machine-type n1-highmem-8 \
-  --disk-size 120 \
+  --disk-size 300 \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
   --logging gs://$OUTPUT_B/logging/ \
@@ -384,6 +379,62 @@ while read SAMPLE ; do
   gsutil rm gs://$OUTPUT_B/$SAMPLE/split_fastq/*.fastq
 done < sample_id.txt
 
+
+########################## Re-calibrate BAM  ################################
+
+# This step is required by the variant call Bis-SNP
+
+# Prepare TSV file
+echo -e "--env SAMPLE\t--env CHR\t--input BAM\t--output OUTPUT_DIR" > bam_recalibration.tsv
+
+while read SAMPLE ; do
+  for CHR in `seq 1 22` X Y ; do 
+  echo -e "$SAMPLE\t$CHR\tgs://$OUTPUT_B/$SAMPLE/bam_per_chr/${SAMPLE}_chr${CHR}.bam\tgs://$OUTPUT_B/$SAMPLE/recal_bam_per_chr/*" >> bam_recalibration.tsv
+  done
+done < sample_id.txt
+
+# Re-calibrate the BAM files.
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --machine-type n1-highmem-8 \
+  --preemptible \
+  --disk-size 400 \
+  --zones $ZONE_ID \
+  --image $DOCKER_GENOMICS \
+  --logging gs://$OUTPUT_B/logging/ \
+  --input REF_GENOME="${REF_GENOME}/*" \
+  --input ALL_VARIANTS="${ALL_VARIANTS}" \
+  --script ${SCRIPTS}/bam_recalibration.sh \
+  --tasks bam_recalibration.tsv \
+  --wait
+
+
+########################## Variant call  ################################
+
+# Prepare TSV file
+echo -e "--env SAMPLE\t--env CHR\t--input BAM_BAI\t--output OUTPUT_DIR" > variant_call.tsv
+
+while read SAMPLE ; do
+  for CHR in `seq 1 22` X Y ; do 
+  echo -e "$SAMPLE\t$CHR\tgs://$OUTPUT_B/$SAMPLE/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.ba*\tgs://$OUTPUT_B/$SAMPLE/variants_per_chr/*" >> variant_call.tsv
+  done
+done < sample_id.txt
+
+
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --machine-type n1-standard-16 \
+  --disk-size 500 \
+  --zones $ZONE_ID \
+  --image $DOCKER_GENOMICS \
+  --logging gs://$OUTPUT_B/logging/ \
+  --input REF_GENOME="${REF_GENOME}/*" \
+  --input ALL_VARIANTS="${ALL_VARIANTS}" \
+  --script ${SCRIPTS}/variant_call.sh \
+  --tasks variant_call.tsv \
+  --wait
 
 
 ################################# Export context files in Big Query ##################
@@ -449,65 +500,6 @@ dsub \
   --tasks append_context.tsv \
   --wait
 
-
-
-########################## Re-calibrate BAM  ################################
-
-# This step is required by the variant call Bis-SNP
-
-# Prepare TSV file
-echo -e "--env SAMPLE\t--env CHR\t--input BAM\t--output OUTPUT_DIR" > bam_recalibration.tsv
-
-while read SAMPLE ; do
-  for CHR in `seq 1 22` X Y ; do 
-  echo -e "$SAMPLE\t$CHR\tgs://$OUTPUT_B/$SAMPLE/bam_per_chr/${SAMPLE}_chr${CHR}.bam\tgs://$OUTPUT_B/$SAMPLE/recal_bam_per_chr/*" >> bam_recalibration.tsv
-  done
-done < sample_id.txt
-
-# Print a message in the terminal
-echo "There are" $(tail -n +2 bam_recalibration.tsv | wc -l) "to be launched"
-
-# Re-calibrate the BAM files.
-dsub \
-  --provider google-v2 \
-  --project $PROJECT_ID \
-  --machine-type n1-standard-16 \
-  --disk-size 200 \
-  --zones $ZONE_ID \
-  --image $DOCKER_GENOMICS \
-  --logging gs://$OUTPUT_B/logging/ \
-  --input REF_GENOME="${REF_GENOME}/*" \
-  --input ALL_VARIANTS="${ALL_VARIANTS}" \
-  --script ${SCRIPTS}/bam_recalibration.sh \
-  --tasks bam_recalibration.tsv \
-  --wait
-
-
-########################## Variant call  ################################
-
-# Prepare TSV file
-echo -e "--env SAMPLE\t--env CHR\t--input BAM_BAI\t--output OUTPUT_DIR" > variant_call.tsv
-
-while read SAMPLE ; do
-  for CHR in `seq 1 22` X Y ; do 
-  echo -e "$SAMPLE\t$CHR\tgs://$OUTPUT_B/$SAMPLE/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.ba*\tgs://$OUTPUT_B/$SAMPLE/variants_per_chr/*" >> variant_call.tsv
-  done
-done < sample_id.txt
-
-
-dsub \
-  --provider google-v2 \
-  --project $PROJECT_ID \
-  --machine-type n1-standard-16 \
-  --disk-size 500 \
-  --zones $ZONE_ID \
-  --image $DOCKER_GENOMICS \
-  --logging gs://$OUTPUT_B/logging/ \
-  --input REF_GENOME="${REF_GENOME}/*" \
-  --input ALL_VARIANTS="${ALL_VARIANTS}" \
-  --script ${SCRIPTS}/variant_call.sh \
-  --tasks variant_call.tsv \
-  --wait
 
 
 ########################## Export recal bam to Big Query, clean, and delete from bucket ################################

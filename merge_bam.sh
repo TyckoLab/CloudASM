@@ -57,7 +57,3 @@ samtools sort \
     -n \
     $(dirname "${TMP_DIR}")/${SAMPLE}_chr${CHR}_sort_ARG_RD.bam \
     $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}
-
-echo "Output directory"
-ls -lh $(dirname "${OUTPUT_DIR}")
-
