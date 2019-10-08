@@ -372,17 +372,12 @@ dsub \
 
 
 
-# Delete split fastq files to save space on the bucket.
-while read SAMPLE ; do
-  touch split_deleted_after_alignment.log
-  gsutil cp split_deleted_after_alignment.log gs://$OUTPUT_B/$SAMPLE/split_fastq/deleted_after_alignment.log
-  gsutil rm gs://$OUTPUT_B/$SAMPLE/split_fastq/*.fastq
-done < sample_id.txt
-
-
 ########################## Re-calibrate BAM  ################################
 
 # This step is required by the variant call Bis-SNP
+
+# Takes 5 hours for the largest chromosomes.
+# chr: 10pm/
 
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env CHR\t--input BAM\t--output OUTPUT_DIR" > bam_recalibration.tsv
@@ -871,22 +866,11 @@ dsub \
 #################################################################
 
 
-QUESTIONS FOR CATHERINE. CONFIRMED.
-DMR EFFECT SIZE: OVER ALL CPGS, EVEN THE ONES THAT ARE NOT WELL COVERED? -- using only the well-covered CpG
-2 CONSECUTIVE CPGS (SIGNIFICANT, ASM IN SAME DIRECTION) AMONG ALL WELL COVERED CPGS?
 
-TASKS:
 
-2/ ALIGN AGAINST NEW GENOME.
-
-3/ BE CAREFUL AT THE CLASSIFICATION OF CHR COLUMN AFTER GOING INTO PYTHON
-
-4/ Used the raw VCF file until the vcf_reads_genotype. Need to generate a clean list of snp_ids from the vcf filtered after excluding
-
-5/ We exclude the CpGs overlapping SNPs from the single-ASM calculation. Do we remove them from the DMR as well? 
---> probably for this reason that we found many more DMRs
-In cpg_genotype.sh would be wise to create a context file where the CpGs were removed, for single-ASM calculation and DMR.
-
-6/ Problem: the CpG coverage on REF and ALT depends on the SNP we consider.
-
-Put all CpGs in the final DMR table -- if we want to identify later CpGs that were not luck enoughto be on a read including a SNP
+# Delete split fastq files to save space on the bucket.
+while read SAMPLE ; do
+  touch split_deleted_after_alignment.log
+  gsutil cp split_deleted_after_alignment.log gs://$OUTPUT_B/$SAMPLE/split_fastq/deleted_after_alignment.log
+  gsutil rm gs://$OUTPUT_B/$SAMPLE/split_fastq/*.fastq
+done < sample_id.txt

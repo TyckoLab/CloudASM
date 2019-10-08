@@ -34,7 +34,7 @@ $JAVA/java -Xmx48g \
     -L ${CHR} \
     -T BisulfiteGenotyper \
     -R $(dirname "${REF_GENOME}")/human_g1k_v37.fasta \
-    -D ${VCF} \
+    -D ${ALL_VARIANTS} \
     -I $(dirname "${BAM_BAI}")/${SAMPLE}_chr${CHR}_recal.bam \
     -vfn1 $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_raw.vcf \
     -mmq 30 \
@@ -56,7 +56,8 @@ perl ${BIS_SNP}/sortByRefAndCor.pl \
 
 # Remove false positives by removing the calls on super high-coverage regions"
 # This removes about 7% of the SNPs identified in "raw"
-$JAVA/java  -Xmx48g -Djava.io.tmpdir=${TMP_DIR} \
+$JAVA/java  -Xmx48g \
+    -Djava.io.tmpdir=${TMP_DIR} \
     -jar ${BIS_SNP}/BisSNP-0.82.2.jar \
     -L $CHR \
     -R $(dirname "${REF_GENOME}")/human_g1k_v37.fasta \
