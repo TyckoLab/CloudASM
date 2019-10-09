@@ -34,7 +34,7 @@ echo
 echo "***********************************"
 $JAVA/java \
     -Djava.io.tmpdir=${TMP_DIR} \
-    -jar -Xmx48g ${BIS_SNP}/BisSNP-0.82.2.jar \
+    -jar -Xmx52g ${BIS_SNP}/BisSNP-0.82.2.jar \
     -L $CHR \
     -R $(dirname "${REF_GENOME}")/human_g1k_v37.fasta \
     -I $(dirname "${BAM}")/${SAMPLE}_chr${CHR}_sorted.bam \
@@ -44,7 +44,7 @@ $JAVA/java \
     -cov QualityScoreCovariate \
     -cov CycleCovariate \
     -recalFile $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.csv \
-    -nt 10
+    -nt 12
 
 echo "FOLDER CONTENT AFTER RECAL FILE"
 ls -lh $(dirname "${BAM}")
@@ -53,22 +53,24 @@ echo "********************"
 echo  "Generates a re-calibrated BAM and BAI file"
 $JAVA/java \
     -Djava.io.tmpdir=${TMP_DIR} \
-    -jar -Xmx48g ${BIS_SNP}/BisSNP-0.82.2.jar \
+    -jar -Xmx52g ${BIS_SNP}/BisSNP-0.82.2.jar \
     -L $CHR \
     -R $(dirname "${REF_GENOME}")/human_g1k_v37.fasta \
     -I $(dirname "${BAM}")/${SAMPLE}_chr${CHR}_sorted.bam \
     -o $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.bam \
     -T BisulfiteTableRecalibration \
     -recalFile $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.csv \
-    --max_quality_score 40
+    --max_quality_score 40 \
+    -nt 12
 
 echo "Create a report for the recalibration"
 $JAVA/java \
     -Djava.io.tmpdir=${TMP_DIR} \
-    -Xmx48g \
+    -Xmx52g \
     -jar ${BIS_SNP}/BisulfiteAnalyzeCovariates-0.69.jar \
     -recalFile $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.csv \
     -outputDir $(dirname "${OUTPUT_DIR}") \
     -ignoreQ 5 \
-    --max_quality_score 40
+    --max_quality_score 40 \
+    -nt 12
 

@@ -430,7 +430,7 @@ dsub \
   --input REF_GENOME="${REF_GENOME}/*" \
   --input ALL_VARIANTS="${ALL_VARIANTS}" \
   --script ${SCRIPTS}/variant_call.sh \
-  --tasks variant_call_rerun_rerun.tsv \
+  --tasks variant_call_rerun_rerun_rerun.tsv \
   --wait
 
 
