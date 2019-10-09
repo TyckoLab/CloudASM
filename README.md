@@ -1,5 +1,6 @@
-# Cloud-powered, highly-scalable, cluster-free bioinformatics pipeline to call allele-specific methylation on bisulfite-converted whole genomes
+# CloudASM: a cloud-based, ultra-efficient pipeline for mapping allele-specific DNA methylation
 
+Last updated: October 9, 2019.
 
 dsub is simply a wrapper around the pipelines API (which uses docker images as execution environments) 
 
@@ -203,7 +204,7 @@ Test on gm12878
 ## Re-run failed jobs
 
 ```
-JOB="bam_recalibration_rerun"
+JOB="variant_call_rerun"
 dstat --provider google-v2 --project PROJECT --jobs 'JOB-ID' --users 'USER' --status '*' > JOB.log
 cat $JOB.log | grep -v Success | tail -n +3 | awk '{print $2}' > ${JOB}_failed.txt
 sed -i '$ d' ${JOB}_failed.txt

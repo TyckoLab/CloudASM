@@ -28,7 +28,7 @@ samtools view -o \
 # -nt is the number of threads.
 
 # Variant call (mmq is the quality score)
-$JAVA/java -Xmx48g \
+$JAVA/java -Xmx52g \
     -Djava.io.tmpdir=${TMP_DIR} \
     -jar ${BIS_SNP}/BisSNP-0.82.2.jar \
     -L ${CHR} \
@@ -40,7 +40,7 @@ $JAVA/java -Xmx48g \
     -mmq 30 \
     -mbq 0 \
     -stand_call_conf 20 \
-    -nt 10 \
+    -nt 12 \
     -out_modes EMIT_HET_SNPS_ONLY
 
 # Sorting the VCF by coordinate..."
@@ -56,7 +56,7 @@ perl ${BIS_SNP}/sortByRefAndCor.pl \
 
 # Remove false positives by removing the calls on super high-coverage regions"
 # This removes about 7% of the SNPs identified in "raw"
-$JAVA/java  -Xmx48g \
+$JAVA/java  -Xmx52g \
     -Djava.io.tmpdir=${TMP_DIR} \
     -jar ${BIS_SNP}/BisSNP-0.82.2.jar \
     -L $CHR \
@@ -67,5 +67,7 @@ $JAVA/java  -Xmx48g \
     -snpVcf $(dirname "${BAM_BAI}")/${SAMPLE}.raw.sort_chr$CHR.vcf \
     -o $(dirname "${OUTPUT_DIR}")/${SAMPLE}.snp.summary_chr$CHR.txt \
     -maxCov 200 \
+    -nt 12 \
     -minSNPinWind 2
+    
 

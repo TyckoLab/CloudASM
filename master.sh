@@ -377,7 +377,6 @@ dsub \
 # This step is required by the variant call Bis-SNP
 
 # Takes 5 hours for the largest chromosomes.
-# chr: 10pm/
 
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env CHR\t--input BAM\t--output OUTPUT_DIR" > bam_recalibration.tsv
@@ -392,7 +391,7 @@ done < sample_id.txt
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
-  --machine-type n1-highmem-8 \
+  --machine-type n1-standard-16 \
   --preemptible \
   --disk-size 400 \
   --zones $ZONE_ID \
@@ -406,6 +405,8 @@ dsub \
 
 
 ########################## Variant call  ################################
+
+# Start 7:50am
 
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env CHR\t--input BAM_BAI\t--output OUTPUT_DIR" > variant_call.tsv
@@ -421,14 +422,15 @@ dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --machine-type n1-standard-16 \
-  --disk-size 500 \
+  --preemptible \
+  --disk-size 400 \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
   --logging gs://$OUTPUT_B/logging/ \
   --input REF_GENOME="${REF_GENOME}/*" \
   --input ALL_VARIANTS="${ALL_VARIANTS}" \
   --script ${SCRIPTS}/variant_call.sh \
-  --tasks variant_call.tsv \
+  --tasks variant_call_rerun_rerun.tsv \
   --wait
 
 
