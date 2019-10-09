@@ -20,17 +20,6 @@ CONSECUTIVE_CPG="2"
 # Minimum reading score of the SNP
 SNP_SCORE="63" # In ASCII, 63 correponds to a quality score of 30. See this table: https://www.drive5.com/usearch/manual/quality_score.html
 
-########################## Docker Images used by the pipeline ################################
-
-# Genomic packages 
-DOCKER_GENOMICS="gcr.io/hackensack-tyco/wgbs-asm"
-
-# Light-weight python image with statistical packages.
-DOCKER_PYTHON="gcr.io/hackensack-tyco/python"
-
-# Off-the-shelf GCP image for GCP-only jobs
-DOCKER_GCP="google/cloud-sdk:255.0.0"
-
 ########################## GCP variables ################################
 
 # GCP global variables
@@ -50,6 +39,18 @@ ALL_VARIANTS="gs://$REF_DATA_B/$GENOME/variants/*.vcf"
 
 # Path of where you downloaded the Github scripts
 SCRIPTS="$HOME/GITHUB_REPOS/wgbs-asm/"
+
+########################## Docker Images used by the pipeline ################################
+
+# Genomic packages 
+DOCKER_GENOMICS="gcr.io/hackensack-tyco/wgbs-asm"
+
+# Light-weight python image with statistical packages.
+DOCKER_PYTHON="gcr.io/hackensack-tyco/python"
+
+# Off-the-shelf GCP image for GCP-only jobs
+DOCKER_GCP="google/cloud-sdk:255.0.0"
+
 
 ########################## Download sample info file ################################
 

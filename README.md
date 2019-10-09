@@ -1,135 +1,23 @@
 
 # CloudASM: a cloud-based, ultra-efficient pipeline for mapping allele-specific DNA methylation
 
-Last updated: October 9, 2019. Please check our preprint on biorxiv. 
+Last updated: October 9, 2019. Please check our preprint on [biorxiv](https://www.biorxiv.org/).
 
 ## Table of contents
 
+Here, the TOC
 
 ***********
 
 ## Overview
 
-CloudASMl ;lkk 
+CloudASM is a turnkey pipeline designed to call allele-specific CpG methylation in whole methylomes. It is designed to run on [Google Cloud Platform](https://cloud.google.com/) (GCP). 
 
-This pipeline starts from the zipped fastq files of a paired-end sequenced sample and outputs a bedgraph of allele-specific methylation. The reference genome is hg19 (also called GRCh37) released in February 2009. The variant database to call SNPs is dbSNP147, the latest database of variants for hg19, cleaned from the SNPs which did not make it to dbSNP150.
+Because it leverages the Google's severless data warehouse, all steps specific to ASM-calling (as opposed to alignment, variant calling, and methylation calling), it is 500x more efficient in terms of CPU-hours when compared to a traditional server-based approach using a cluster.
 
-We ran the pipeline on 10 ENCODE samples. The cost of running this whole pipeline on an ENCODE samples is about $250.
+This pipeline starts from the zipped fastq files hosted on a bucket and outputs a table on BigQuery of all regions in a sample showing allele-specific methylation.
 
-The advantage of using the Google's genomics pipeline tool (still in alpha as of August 2019) is that it takes care of two cumbersome tasks: 1/ create, deploy, monitor, and delete a cluster and 2/ download files from buckets and upload results of a pipeline step to a bucket.
-
-## Prerequisites
-
-You need a ref genome.
-
-it needs to be prepared by bismark
-
-Clone the repository locally
-
-do not use any dash in the sample name (underscores are ok)
-
-### Installation
-
-Docker
-etc.
-dos2unix
-
-
-# Install Docker 
-https://docs.docker.com/install/
-
-# Install dsub
-
-git clone https://github.com/googlegenomics/dsub.git
-cd dsub
-
-python setup.py install
-
-# Install virtualenv, a tool to create isolated Python environments. 
-# Install https://virtualenv.pypa.io/en/stable/installation/
-
-# Go into any folder and type:
-virtualenv --python=python2.7 dsub_libs
-
-# Launch the virtual environment
-source dsub_libs/bin/activate
-
-### Prepare a file with the names of the files.
-
-To run this pipeline, you need an account with [Google Cloud](https://cloud.google.com/).
-
-All samples you want to analyze need to be in the same bucket (which we call here `gs://SAMPLES`) with one folder per sample. In the bucket, at `gs://SAMPLES/lanes.csv`, upload a CSV file with the correspondance of each zipped fastq file to the lane ID, read, and size in GB of the zipped fastq file. For ENCODE samples, it looks like this:
-
-| Sample_name  |     ENCODE_ID |  ENCODE_file_name | Lane_ID   |   Read | Rename |  Size_GB |
-| ------------- | ------------- | ------------- |------------- | ------------- | ------------- |  ------------- |
-| A549  | ENCFF327QCK    | ENCFF327QCK.fastq.gz | L01 |  R1 | A549_L01.R1 | 84 |
-| A549 | ENCFF986UWM | ENCFF986UWM.fastq.gz | L01 | R2 | A549_L01.R2 | 84 |
-| A549 | ENCFF327QCK | ENCFF327QCK.fastq.gz | L01 | R1 | A549_L01.R1 | 84 |
-| A549 | ENCFF986UWM | ENCFF986UWM.fastq.gz | L01 | R2 | A549_L01.R2 | 84 |
-| A549 | ENCFF565VHN | ENCFF565VHN.fastq.gz | L02 | R1 | A549_L02.R1 | 84 |
-| A549 | ENCFF251FLW | ENCFF251FLW.fastq.gz | L02 | R2 | A549_L02.R2 | 84 |
-
-
-sample	bucket_url	lane_id	read_id	file_new_name
-gm12878	gs://encode-wgbs/gm12878/ENCFF113KRQ.fastq.gz	L01	R2	gm12878_L01.R2
-gm12878	gs://encode-wgbs/gm12878/ENCFF585BXF.fastq.gz	L02	R1	gm12878_L02.R1
-gm12878	gs://encode-wgbs/gm12878/ENCFF798RSS.fastq.gz	L01	R1	gm12878_L01.R1
-gm12878	gs://encode-wgbs/gm12878/ENCFF851HAT.fastq.gz	L02	R2	gm12878_L02.R2
-
-The output of the analysis will be done in a different bucket (which we call here `gs://ASM`). 
-
-Our pipeline requires a very specific combination of genomics packages. We have put together a Docker-generated image on Cloud Build at `gcr.io/hackensack-tyco/wgbs-asm`. 
-
-## Pipeline overview
-
-The pipeline follows these steps:
-
-1. Unzip fastq files and trim them in 12M-row fastq files.
-2. Trim and align each pair of fastq files. Split the output BAM file in chromosome-specific BAM files.
-3. Merge all BAM files per chromosome. Remove duplicates. Perform net methylation.
-4. Perform SNP calling.
-5. Compute allele-specific methylation.
-
-## Bucket organization
-
-The structure of the data, in each sample folder in `gs://ASM`, is the following:
-
-- `<SAMPLE>`
-  - `split`
-    - `fastq`: folder containing the 12M-row FastQ files. 
-    - `trimmed`: folder containing the TrimGalore's output of the 12M-row FastQ files. 
-    - `aligned`: folder containing the Bismark's alignment output for the 12M-row FastQ files as well as the BAM files without the duplicates. 
-    - `per_chr`: BAM files chunks re-organized by chromosome. 
-    - The file SAMPLE.laneXXX.list that contain, for each lane, the names of the files for the R1 files. 
-  - `merged`: 
-    - All BAM files per chromosome (see below a detailed description of all BAM files)
-    - The reports by chromosome of the MarkDuplicate function.
-    - All context files per chromosome (CpG* files and Non_CpG* files, see below details)
-    - All the other files generated by Bismark's net methylation call (see `merge_bam_net_methyl` pipeline below)
-  - `snp_call`: this folder contains all the files listing the SNPs found the recal BAM (~55 files per chrosomosome + a master file per chromosome) as well as all VCF files (several per chromsome)
-    - `recal_reports`: contains the reports generated by bis-snp recalibration (one subfolder per chromosome)
-  - `asm`: one subfolder for each chromosomes and sub-sub-folders for each of the 53 or 54 lists of SNP on which we compute a SAM file for REF and ALT alleles.
-
-
-
-
-
-
-
-
-
-
-
-RUN mkdir -p /ref_genome
-
-# We use hg19 (also called GRCh37) released in February 2009.
-RUN gsutil -m cp -r gs://ref_genomes/grc37 /ref_genome
-
-# Variant database (dbSNP150)
-RUN gsutil -m cp gs://ref_genomes/dbSNP150_grc37_GATK/no_chr_dbSNP150_GRCh37.vcf /ref_genome
-
-
-
+## Biology significance of CloudASM
 
 Important stuff
 - we filter out the reads where the confidence in the SNP letter is less than 30
@@ -143,56 +31,77 @@ DMR:
 at least 20% difference between the REF reads and the ALT reads and FDR < 0.05
 
 Bis-SNP reports SNPs in positive strand of the reference genome (it's NOT bisulfite-converted)
-Bismark reports in positive strand but it is bisulfite-converted, requiring careful handling of the Bis-SNP variant call data.
+Bismark reports in positive strand but it is bisulfite-converted, requiring careful hand
 
 
 
-nochr file for dbSNP: we renamed chr21 into '21' to agree with the SAM files.
+From a biology standpoint, ASM can be calculated at the single CpG level (ASM CpG) or across a region (ASM DMR). Our pipeline uses criteria on both to output what we consider biologicaly-relevant ASM. All biological parameters relevant to ASM can be customized through the following variables:
+- `GENOME`: the reference genome to be used in alignment. It can be either `hg19` or `GRCh38`.
+- `DMR_EFFECT`: the minimum effect size in terms of methylation percentage between allele A and allele B of a variant.
+- `CPG_COV`: the minimum coverage of each CpG in a given allele. 
+- `CPG_PER_DMR`: the minimum number of CpGs per allele and the minimum number of CpGs per variant with ASM in the same direction.
+- `CONSECUTIVE_CPG`: the minimum number of CpGs with significant ASM in the same direction, in a given ASM DMR.
+- `SNP_SCORE`: the minimum score in ASCII required for SNP nucleotides in a read. If the score is too low, we could not tell which allele is included in the read.
+
+What the pipeline does, briefly, is the following:
+
+1. Unzip fastq files and split them into smaller files.
+2. Trim each pair of fastq files
+3. Align each pair of fastq files
+4. Merge BAM files per chromosome and prepare them for variant calling.
+
+## Bioinformatics packages used in CloudASM
+
+1. Bismark for 
+
+Our pipeline requires a very specific combination of genomics packages. We have put together a Docker-generated image on Cloud Build at `gcr.io/hackensack-tyco/wgbs-asm`. 
 
 
-## Prepare the databases required to run the pipeline
+## Installation
 
-### Reference genome: GRCh38.p7
+To run You need to install GCP's Python package called ["dsub"](https://github.com/DataBiosphere/dsub). We recommend using the method where their repository is cloned in combination with the virtual environment.
 
-The reference genome (unmasked genomic DNA sequences) was downloaded from here:
+## How to use the pipeline
 
-Download all files.
+1. Prepare the zipped fastq files to be analyzed (see below how)
 
-```
-wget ftp://ftp.ensembl.org/pub/release-87/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.*.fa.gz
-```
+2. Clone this repository on your computer
 
+3. Define the **ASM variables** and the **GCP variables** in `main.sh`.
 
-### dbSNP database (dbSNP151)
+4. Copy, sequentially, all instructions from main.sh into the terminal, block by block (a "block" is a set of instructions included in between two headlines). 
 
-https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/All_20180418.vcf.gz
-
-Download to a computer, unzip and upload to the bucket REF_DATA_B
-
-Note that the header of this VCF file is:
-
-```
-##fileformat=VCFv4.0
-##fileDate=20180418
-##source=dbSNP
-##dbSNP_BUILD_ID=151
-##reference=GRCh38.p7
-```
+5. Before moving on to the next instructions block, re-run the jobs that fail if you use preemptive machines (failure rate is about 5-10% when using preemptive machines). See below how to do that.
 
 
-### Bisulfite-converted reference genome.
+## Prepare the fastq files to be analyzed
 
 
-gatk
+Create a bucket (variable `INPUT_B` in the master script)
+
+
+All samples you want to analyze need to be in the same bucket (which we call here `gs://SAMPLES`) with one folder per sample. In the bucket, at `gs://SAMPLES/lanes.csv`, upload a CSV file with the correspondance of each zipped fastq file to the lane ID, read, and size in GB of the zipped fastq file. For ENCODE samples, it looks like this:
+
+
+| sample | bucket_url | lane_id | read_id | file_new_name |
+| ------ | ---------- | ------- | ------- | ------------- |
+| gm12878 | gs://encode-wgbs/gm12878/ENCFF113KRQ.fastq.gz	| L01 | R2 | gm12878_L01.R2.fastq |
+| gm12878 | gs://encode-wgbs/gm12878/ENCFF585BXF.fastq.gz | L02 | R1 | gm12878_L02.R1.fastq |
+| gm12878 | gs://encode-wgbs/gm12878/ENCFF798RSS.fastq.gz | L01 | R1 | gm12878_L01.R1.fastq |
+| gm12878 | gs://encode-wgbs/gm12878/ENCFF851HAT.fastq.gz | L02 | R2 | gm12878_L02.R2.fastq |
 
 
 
-####
+## Pipeline overview
 
+The pipeline follows these steps:
 
-Test on gm12878
-174 GB of zipped fastq files.
-
+1. Create a bisulfite-converted genome from the reference genome that was chosen.
+2. Unzip fastq files and trim them in 12M-row fastq files.
+3. Trim and align each pair of fastq files. Split the output BAM file in chromosome-specific BAM files.
+4. Merge all BAM files per chromosome. Remove duplicates. Perform net methylation.
+5. Perform SNP calling.
+6. Compute allele-specific methylation.
 
 ## Re-run failed jobs
 
