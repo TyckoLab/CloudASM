@@ -1,23 +1,15 @@
 # CloudASM: a cloud-based, ultra-efficient pipeline for mapping allele-specific DNA methylation
+------------------------
 
 Last updated: October 9, 2019.
 
-dsub is simply a wrapper around the pipelines API (which uses docker images as execution environments) 
-
-
 ## Table of contents
 
-[Introduction](#introduction)
 
-[Prerequisites](#prerequisites)
 
-[Pipeline overview](#pipeline-overview)
+## Overview
 
-[Bucket organization](#Bucket-organization)
-
-## Introduction
-
-This repository is companion to the paper `Google Cloud-powered, scalable, low-cost bioinformatics pipeline to call allele-specific methylation on bisulfite-converted whole genomes`, published on XX/XX/2019 on bioRxiv.org.
+This repository is companion to the paper `Google Cloud-powered, scalable, low-cost bioinformatics pipeline to call allele-specific methylation on bisulfite-converted whole genomes`, published as a pre-print on XX/XX/2019 on bioRxiv.org.
 
 This pipeline starts from the zipped fastq files of a paired-end sequenced sample and outputs a bedgraph of allele-specific methylation. The reference genome is hg19 (also called GRCh37) released in February 2009. The variant database to call SNPs is dbSNP147, the latest database of variants for hg19, cleaned from the SNPs which did not make it to dbSNP150.
 

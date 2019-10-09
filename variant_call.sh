@@ -12,7 +12,7 @@ mkdir -p ${TMP_DIR}
 
 # This file will be transfered to Big Query and deleted.
 
-# Create a SAM file with no header
+echo "Create a SAM file with no header"
 samtools view -o \
     $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.sam \
     $(dirname "${BAM_BAI}")/${SAMPLE}_chr${CHR}_recal.bam
@@ -27,8 +27,8 @@ samtools view -o \
 
 # -nt is the number of threads.
 
-# Variant call (mmq is the quality score)
-$JAVA/java -Xmx52g \
+echo "Variant call (mmq is the quality score)"
+$JAVA/java -Xmx54g \
     -Djava.io.tmpdir=${TMP_DIR} \
     -jar ${BIS_SNP}/BisSNP-0.82.2.jar \
     -L ${CHR} \
@@ -40,10 +40,10 @@ $JAVA/java -Xmx52g \
     -mmq 30 \
     -mbq 0 \
     -stand_call_conf 20 \
-    -nt 12 \
+    -nt 14 \
     -out_modes EMIT_HET_SNPS_ONLY
 
-# Sorting the VCF by coordinate..."
+echo "Sorting the VCF by coordinate..."
 perl ${BIS_SNP}/sortByRefAndCor.pl \
     --k 1 \
     --c 2 \
@@ -54,9 +54,9 @@ perl ${BIS_SNP}/sortByRefAndCor.pl \
 
 # maxCOV: beyond this depth value, we ignore because we think it's a wrong region.
 
-# Remove false positives by removing the calls on super high-coverage regions"
+echo "Remove false positives by removing the calls on super high-coverage regions"
 # This removes about 7% of the SNPs identified in "raw"
-$JAVA/java  -Xmx52g \
+$JAVA/java  -Xmx54g \
     -Djava.io.tmpdir=${TMP_DIR} \
     -jar ${BIS_SNP}/BisSNP-0.82.2.jar \
     -L $CHR \
@@ -67,7 +67,7 @@ $JAVA/java  -Xmx52g \
     -snpVcf $(dirname "${BAM_BAI}")/${SAMPLE}.raw.sort_chr$CHR.vcf \
     -o $(dirname "${OUTPUT_DIR}")/${SAMPLE}.snp.summary_chr$CHR.txt \
     -maxCov 200 \
-    -nt 12 \
+    -nt 14 \
     -minSNPinWind 2
     
 
