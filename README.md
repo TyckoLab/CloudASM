@@ -76,8 +76,7 @@ The pipeline follows these steps:
 - jre1.7.0_25
 - BisSNP-0.82.2
 
-All these packages are included in the Docker-generated image `gcr.io/hackensack-tyco/wgbs-asm`.
-
+Note that we need to use a specific version of JAVA to be able to run BisSNP.All these packages are included in the Docker-generated image `gcr.io/hackensack-tyco/wgbs-asm`.
 
 ## Installation
 
@@ -97,12 +96,9 @@ To run You need to install GCP's Python package called ["dsub"](https://github.c
 
 6. Before moving on to the next instructions block, re-run the jobs that fail if you use preemptive machines (failure rate is about 5-10% when using preemptive machines). See below how to do that.
 
-
 ## Prepare the fastq files to be analyzed
 
-Create a bucket (variable `INPUT_B` in the master script) and create, within this bucket, one folder per sample (the folder should have the name of the sample -- do not use dashes in the name of the sample)
-
-All samples you want to analyze need to be in the same bucket (which we call here `gs://SAMPLES`) with one folder per sample. In the bucket, at `gs://SAMPLES/lanes.csv`, upload a CSV file with the correspondance of each zipped fastq file to the lane ID, read, and size in GB of the zipped fastq file. For the ENCODE sample we tested for this pipeline, it looks like this:
+Create a bucket (variable `INPUT_B` in the master script) and create, within this bucket, one folder per sample (the folder should have the name of the sample -- do not use dashes in the name of the sample). In the `INPUT_B` bucket, upload a CSV file that describes the sample's files, using the model below:
 
 | sample | bucket_url | lane_id | read_id | file_new_name |
 | ------ | ---------- | ------- | ------- | ------------- |
@@ -111,7 +107,11 @@ All samples you want to analyze need to be in the same bucket (which we call her
 | gm12878 | gs://encode-wgbs/gm12878/ENCFF798RSS.fastq.gz | L01 | R1 | gm12878_L01.R1.fastq |
 | gm12878 | gs://encode-wgbs/gm12878/ENCFF851HAT.fastq.gz | L02 | R2 | gm12878_L02.R2.fastq |
 
+Do not change the titles of the columns of this CSV file.
+
 ## Re-run failed jobs
+
+If you use preemptive machines, they may be taken back by GCP before the job ends. If this is the case
 
 ```
 JOB="variant_call_rerun"

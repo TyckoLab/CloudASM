@@ -23,9 +23,7 @@ java \
 echo "Create index file"
 samtools index $(dirname "${BAM}")/${SAMPLE}_chr${CHR}_sorted.bam
 
-echo "***********************************"
 echo "Create recal file. This requires a specific version of Java."
-
 $JAVA/java \
     -Djava.io.tmpdir=${TMP_DIR} \
     -jar -Xmx52g ${BIS_SNP}/BisSNP-0.82.2.jar \
