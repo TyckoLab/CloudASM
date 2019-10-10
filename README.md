@@ -43,18 +43,40 @@ From a biology standpoint, ASM can be calculated at the single CpG level (ASM Cp
 - `CONSECUTIVE_CPG`: the minimum number of CpGs with significant ASM in the same direction, in a given ASM DMR.
 - `SNP_SCORE`: the minimum score in ASCII required for SNP nucleotides in a read. If the score is too low, we could not tell which allele is included in the read.
 
-What the pipeline does, briefly, is the following:
+The pipeline is designed to run the following steps sequentially:
 
+1. Create a bisulfite-converted genome from the reference genome that was chosen.
 1. Unzip fastq files and split them into smaller files.
-2. Trim each pair of fastq files
-3. Align each pair of fastq files
-4. Merge BAM files per chromosome and prepare them for variant calling.
+1. Trim each pair of fastq files
+1. Align each pair of fastq files
+1. Merge BAM files per chromosome and prepare them for variant calling.
+1. Net methylation calling
+1. 1 
+
+## Pipeline overview
+
+The pipeline follows these steps:
+
+1. 
+2. Unzip fastq files and trim them in 12M-row fastq files.
+3. Trim and align each pair of fastq files. Split the output BAM file in chromosome-specific BAM files.
+4. Merge all BAM files per chromosome. Remove duplicates. Perform net methylation.
+5. Perform SNP calling.
+6. Compute allele-specific methylation.
 
 ## Bioinformatics packages used in CloudASM
 
-1. Bismark for 
+- bowtie2-2.1.0
+- samtools-0.1.19
+- bedtools2
+- Bismark_v0.19.0
+- cutadapt-1.4.2
+- TrimGalore-0.4.5
+- picard-tools-1.97/picard-tools-1.97
+- jre1.7.0_25
+- BisSNP-0.82.2
 
-Our pipeline requires a very specific combination of genomics packages. We have put together a Docker-generated image on Cloud Build at `gcr.io/hackensack-tyco/wgbs-asm`. 
+All these packages are included in the Docker-generated image `gcr.io/hackensack-tyco/wgbs-asm`.
 
 
 ## Installation
@@ -92,16 +114,7 @@ All samples you want to analyze need to be in the same bucket (which we call her
 
 
 
-## Pipeline overview
 
-The pipeline follows these steps:
-
-1. Create a bisulfite-converted genome from the reference genome that was chosen.
-2. Unzip fastq files and trim them in 12M-row fastq files.
-3. Trim and align each pair of fastq files. Split the output BAM file in chromosome-specific BAM files.
-4. Merge all BAM files per chromosome. Remove duplicates. Perform net methylation.
-5. Perform SNP calling.
-6. Compute allele-specific methylation.
 
 ## Re-run failed jobs
 

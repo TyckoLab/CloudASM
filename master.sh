@@ -98,7 +98,6 @@ bq --location=us-east4 mk --dataset ${PROJECT_ID}:${DATASET_ID}
 gsutil mb -c standard -l $REGION_ID gs://${OUTPUT_B} 
 gsutil mb -c standard -l $REGION_ID gs://${REF_DATA_B}
 
-
 ########################## Assemble and prepare the ref genome. Download variants database ################################
 
 # We assemble the ref genome, prepare it to be used by Bismark, and download/unzip the variant database
@@ -407,13 +406,13 @@ dsub \
 
 ########################## Variant call  ################################
 
-# Start 7:50am
+# Takes 5 hours for the largest chromosomes.
 
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env CHR\t--input BAM_BAI\t--output OUTPUT_DIR" > variant_call.tsv
 
 while read SAMPLE ; do
-  for CHR in `seq 1 22` X Y ; do 
+  for CHR in `seq 22 22` ; do 
   echo -e "$SAMPLE\t$CHR\tgs://$OUTPUT_B/$SAMPLE/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.ba*\tgs://$OUTPUT_B/$SAMPLE/variants_per_chr/*" >> variant_call.tsv
   done
 done < sample_id.txt
@@ -423,7 +422,6 @@ dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --machine-type n1-standard-16 \
-  --preemptible \
   --disk-size 400 \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
@@ -431,7 +429,7 @@ dsub \
   --input REF_GENOME="${REF_GENOME}/*" \
   --input ALL_VARIANTS="${ALL_VARIANTS}" \
   --script ${SCRIPTS}/variant_call.sh \
-  --tasks variant_call_rerun_rerun_rerun.tsv \
+  --tasks variant_call.tsv \
   --wait
 
 

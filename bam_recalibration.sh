@@ -23,15 +23,9 @@ java \
 echo "Create index file"
 samtools index $(dirname "${BAM}")/${SAMPLE}_chr${CHR}_sorted.bam
 
-echo "FOLDER CONTENT AFTER CREATING INDEX FILE"
-ls -lh $(dirname "${BAM}")
-echo "********************"
-
-
 echo "***********************************"
 echo "Create recal file. This requires a specific version of Java."
-echo 
-echo "***********************************"
+
 $JAVA/java \
     -Djava.io.tmpdir=${TMP_DIR} \
     -jar -Xmx52g ${BIS_SNP}/BisSNP-0.82.2.jar \
@@ -46,10 +40,6 @@ $JAVA/java \
     -recalFile $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.csv \
     -nt 12
 
-echo "FOLDER CONTENT AFTER RECAL FILE"
-ls -lh $(dirname "${BAM}")
-echo "********************"
-
 echo  "Generates a re-calibrated BAM and BAI file"
 $JAVA/java \
     -Djava.io.tmpdir=${TMP_DIR} \
@@ -60,8 +50,7 @@ $JAVA/java \
     -o $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.bam \
     -T BisulfiteTableRecalibration \
     -recalFile $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.csv \
-    --max_quality_score 40 \
-    -nt 12
+    --max_quality_score 40 
 
 echo "Create a report for the recalibration"
 $JAVA/java \
@@ -71,6 +60,5 @@ $JAVA/java \
     -recalFile $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.csv \
     -outputDir $(dirname "${OUTPUT_DIR}") \
     -ignoreQ 5 \
-    --max_quality_score 40 \
-    -nt 12
+    --max_quality_score 40 
 
