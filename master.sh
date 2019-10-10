@@ -301,6 +301,7 @@ dsub \
   --tasks split_bam.tsv \
   --wait
 
+
 ########################## Merge all BAMs by chromosome, clean them ################################
 
 # May take up to 5 hours for the largest chromosomes.

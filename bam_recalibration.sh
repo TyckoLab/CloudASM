@@ -13,7 +13,7 @@ mkdir -p ${TMP_DIR}
 # Sort by coordinate (required by Bis-SNP)
 java \
       -Djava.io.tmpdir=${TMP_DIR} \
-      -Xmx48g \
+      -Xmx52g \
       -jar $PICARD/SortSam.jar \
       I=${BAM} \
       O=$(dirname "${BAM}")/${SAMPLE}_chr${CHR}_sorted.bam \

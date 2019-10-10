@@ -91,9 +91,11 @@ To run You need to install GCP's Python package called ["dsub"](https://github.c
 
 3. Define the **ASM variables** and the **GCP variables** in `main.sh`.
 
-4. Copy, sequentially, all instructions from main.sh into the terminal, block by block (a "block" is a set of instructions included in between two headlines). 
+4. Launch a virtual environment `source dsub_libs/bin/activate` from dsub's repository.
 
-5. Before moving on to the next instructions block, re-run the jobs that fail if you use preemptive machines (failure rate is about 5-10% when using preemptive machines). See below how to do that.
+5. Copy, sequentially, all instructions from main.sh into the terminal, block by block (a "block" is a set of instructions included in between two headlines). 
+
+6. Before moving on to the next instructions block, re-run the jobs that fail if you use preemptive machines (failure rate is about 5-10% when using preemptive machines). See below how to do that.
 
 
 ## Prepare the fastq files to be analyzed
