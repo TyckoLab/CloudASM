@@ -392,7 +392,7 @@ done < sample_id.txt
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
-  --machine-type n1-highmem-8 \
+  --machine-type n1-standard-16 \
   --preemptible \
   --disk-size 400 \
   --zones $ZONE_ID \
