@@ -418,7 +418,7 @@ while read SAMPLE ; do
   done
 done < sample_id.txt
 
-
+# Run tasks
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -430,7 +430,7 @@ dsub \
   --input REF_GENOME="${REF_GENOME}/*" \
   --input ALL_VARIANTS="${ALL_VARIANTS}" \
   --script ${SCRIPTS}/variant_call.sh \
-  --tasks variant_call.tsv \
+  --tasks variant.tsv \
   --wait
 
 

@@ -1,11 +1,18 @@
 
 # CloudASM: a cloud-based, ultra-efficient pipeline for mapping allele-specific DNA methylation
 
-Last updated: October 9, 2019. Please check our preprint on [biorxiv](https://www.biorxiv.org/).
+Last updated: October 11, 2019. Please check our preprint on [biorxiv](https://www.biorxiv.org/).
 
 ## Table of contents
 
-Here, the TOC
+  - [Overview](#overview)
+  - [Biology significance of CloudASM](#biology-significance-of-cloudasm)
+  - [Pipeline overview](#pipeline-overview)
+  - [Bioinformatics packages used in CloudASM](#bioinformatics-packages-used-in-cloudasm)
+  - [Installation](#installation)
+  - [How to use the pipeline](#how-to-use-the-pipeline)
+  - [Prepare the fastq files to be analyzed](#prepare-the-fastq-files-to-be-analyzed)
+  - [Re-run failed jobs](#re-run-failed-jobs)
 
 ***********
 
@@ -19,50 +26,32 @@ This pipeline starts from the zipped fastq files hosted on a bucket and outputs 
 
 ## Biology significance of CloudASM
 
-Important stuff
-- we filter out the reads where the confidence in the SNP letter is less than 30
-- we remove CpGs from the context file where the C or G overlap with the SNP
-- we remove all SNPs that are not within 500 bp of at least a CpG
+Our laboratory has a long-standing expertise in studying allele-specific methylation. To make sure our pipeline avoids outputing false positives, we have implemented the following steps:
 
+- we filter out the reads where the confidence in the SNP nucleotide is lower than 30 (variable `SNP_SCORE`)
+- we remove CpGs from the context file where the C or G overlap with a SNP found in the unfiltered list of variants identified by BisSNP
+- We do not consider for ASM the SNPs that are not within 500 bp of at least a CpG
 
-DMR: 
-3 significant ASM CpG in the same direction
-2 consecutive significant CpGs in the same direction
-at least 20% difference between the REF reads and the ALT reads and FDR < 0.05
+To catch a "true positive" phenomenon of allele-specific methylation, we use two types of calculation:
 
-Bis-SNP reports SNPs in positive strand of the reference genome (it's NOT bisulfite-converted)
-Bismark reports in positive strand but it is bisulfite-converted, requiring careful hand
-
-
-
-From a biology standpoint, ASM can be calculated at the single CpG level (ASM CpG) or across a region (ASM DMR). Our pipeline uses criteria on both to output what we consider biologicaly-relevant ASM. All biological parameters relevant to ASM can be customized through the following variables:
-- `GENOME`: the reference genome to be used in alignment. It can be either `hg19` or `GRCh38`.
-- `DMR_EFFECT`: the minimum effect size in terms of methylation percentage between allele A and allele B of a variant.
-- `CPG_COV`: the minimum coverage of each CpG in a given allele. 
-- `CPG_PER_DMR`: the minimum number of CpGs per allele and the minimum number of CpGs per variant with ASM in the same direction.
-- `CONSECUTIVE_CPG`: the minimum number of CpGs with significant ASM in the same direction, in a given ASM DMR.
-- `SNP_SCORE`: the minimum score in ASCII required for SNP nucleotides in a read. If the score is too low, we could not tell which allele is included in the read.
-
-The pipeline is designed to run the following steps sequentially:
-
-1. Create a bisulfite-converted genome from the reference genome that was chosen.
-1. Unzip fastq files and split them into smaller files.
-1. Trim each pair of fastq files
-1. Align each pair of fastq files
-1. Merge BAM files per chromosome and prepare them for variant calling.
-1. Net methylation calling
-1. 1 
+1. single CpG level ASM ("CpG ASM") where we estimate if there is ASM on a CpG that is at least 5x covered on both alleles. We use a cut-off p-value of 0.05 on an exact Fisher's test.
+2. ASM over a region delimited by CpGs that are found on the same reads as the SNP. The region is delimited by two CpGs showing ASM, must contain at least 3 CpGs (variable `CPG_PER_DMR`), must have at least 2 consecutive CpGs with ASM in the same direction (variable `CONSECUTIVE_CPG`), must have an effect size of at least 20% between the two allele (variable `DMR_EFFECT`). The effect size is the difference in methylation percentage between the two alleles calculated across all CpGs in the DMR. We use a p-value of 0.05 on a Wilcoxon test.
 
 ## Pipeline overview
 
 The pipeline follows these steps:
 
-1. 
-2. Unzip fastq files and trim them in 12M-row fastq files.
-3. Trim and align each pair of fastq files. Split the output BAM file in chromosome-specific BAM files.
-4. Merge all BAM files per chromosome. Remove duplicates. Perform net methylation.
-5. Perform SNP calling.
-6. Compute allele-specific methylation.
+1. Create a bisulfite-converted genome from the reference genome that was chosen.
+2. Unzip fastq files and split them into smaller files.
+3. Trim each pair of fastq files
+4. Align each pair of fastq files
+5. Merge BAM files per chromosome and prepare them for variant calling.
+6. Net methylation calling
+7. Re-calibration of BAM files
+8. Variant calling
+9. Allele-specific methylation calling
+
+Note that the user can choose the reference genome to align the bisulfite-converted reads. The script automatically fetches the correct database of variants for the reference genome that is selected.
 
 ## Bioinformatics packages used in CloudASM
 
@@ -76,7 +65,9 @@ The pipeline follows these steps:
 - jre1.7.0_25
 - BisSNP-0.82.2
 
-Note that we need to use a specific version of JAVA to be able to run BisSNP.All these packages are included in the Docker-generated image `gcr.io/hackensack-tyco/wgbs-asm`.
+Note #1: that we need to use a specific version of JAVA to be able to run BisSNP.All these packages are included in the Docker-generated image `gcr.io/hackensack-tyco/wgbs-asm`. Bis-SNP reports SNPs in positive strand of the reference genome (it's NOT bisulfite-converted)
+
+Note #2: Bismark reports sequences it aligns in positive strand but it is bisulfite-converted, requiring careful handling of ASM calling.
 
 ## Installation
 
@@ -111,14 +102,13 @@ Do not change the titles of the columns of this CSV file.
 
 ## Re-run failed jobs
 
-If you use preemptive machines, they may be taken back by GCP before the job ends. If this is the case
+If you use preemptive machines, they may be taken back by GCP before the job ends. If this is the case, then you need to re-run the tasks that could not be completed before the termination of the preemptive machines executing them. The code below will enable you to create a new TSV of all the tasks that could not complete on time.
 
 ```
-JOB="variant_call_rerun"
+JOB="TASK"
 dstat --provider google-v2 --project PROJECT --jobs 'JOB-ID' --users 'USER' --status '*' > JOB.log
 cat $JOB.log | grep -v Success | tail -n +3 | awk '{print $2}' > ${JOB}_failed.txt
 sed -i '$ d' ${JOB}_failed.txt
-
 
 head -1 ${JOB}.tsv > ${JOB}_rerun.tsv
 
@@ -126,3 +116,4 @@ while read INDEX ; do
   ROW=$(($INDEX +1))
   sed -n "${ROW}p" ${JOB}.tsv >> ${JOB}_rerun.tsv
 done < ${JOB}_failed.txt
+```
