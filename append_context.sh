@@ -4,12 +4,13 @@
 #because they do not have at least 20% methylation or 10x coverage
 
 # Re-order the OB file and transform methylation status in 1 or 0
-# Merge the OB and OT
+echo "Merge the OB and OT"
 bq query \
     --use_legacy_sql=false \
     --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_both_context_tmp \
     --replace=true \
-    "WITH OB AS (
+    "WITH 
+        OB AS (
             SELECT 
                 read_id, 
                 chr, 
@@ -21,7 +22,7 @@ bq query \
             FROM 
                 ${DATASET_ID}.${SAMPLE}_CpGOB
             ),
-          OT AS (
+        OT AS (
             SELECT 
                 read_id,
                 chr, 
@@ -35,13 +36,13 @@ bq query \
           UNION ALL 
           SELECT * FROM OT"
 
-#Sum methylation and coverage per pair of (chr, pos)
+echo "Sum methylation and coverage per CpG. Keep at least 10x cov."
 # We impose a coverage of at least 10x per CpG.
 bq query \
     --use_legacy_sql=false \
     --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_merged_context_bed \
     --replace=true \
-    " 
+    "  
     WITH MERGED_STRANDS AS (
         SELECT 
             chr, 
@@ -62,12 +63,12 @@ bq query \
             meth_perc
         FROM 
             MERGED_STRANDS
-        WHERE 
+        WHERE
             -- 2 x the minimum coverage required by allele (no allele distinction at this stage)
             cov >= 2*${CPG_COV}
     "
 
-# Filter out from both_context_tmp the CpG sites that do not have at least 10x cov 
+echo "Filter out from both_context_tmp the CpG sites that do not have at least 10x cov"
 # This removes about 20% of all CpG flagged by Bismark.
 bq query \
     --use_legacy_sql=false \
@@ -96,7 +97,7 @@ bq query \
             AND pos_cpg = pos
     "
 
-# Methylation percentage bedgraph
+echo "Methylation percentage bedgraph"
 bq query \
     --use_legacy_sql=false \
     --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_methyperc_bedgraph \
@@ -110,7 +111,7 @@ bq query \
         ${DATASET_ID}.${SAMPLE}_merged_context_bed
     "
 
-# CpG coverage bedgraph
+echo "CpG coverage bedgraph"
 bq query \
     --use_legacy_sql=false \
     --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_CpGcov_bedgraph \
@@ -125,6 +126,9 @@ bq query \
     "
 
 ################### Export bedgraph files to bucket
+
+echo "Export bedgraph files of net methylation and coverage"
+
 bq extract \
     --field_delimiter "\t" \
     --print_header=false \
@@ -140,12 +144,12 @@ bq extract \
 
 ########################## Delete most BQ files
 
-# Delete bedgraph files from BQ
+echo "Delete bedgraph files from BQ"
 bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_both_context_tmp
 bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_methyperc_bedgraph
 bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_CpGcov_bedgraph
 bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_merged_context_bed
 
-# Delete raw files
-bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOB
-bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOT
+echo "Delete raw files"
+#bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOB
+#bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOT

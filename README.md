@@ -20,7 +20,7 @@ Last updated: October 11, 2019. Please check our preprint on [biorxiv](https://w
 
 CloudASM is a turnkey pipeline designed to call allele-specific CpG methylation in whole methylomes. It is designed to run on [Google Cloud Platform](https://cloud.google.com/) (GCP). 
 
-Because it leverages the Google's severless data warehouse, all steps specific to ASM-calling (as opposed to alignment, variant calling, and methylation calling), it is 500x more efficient in terms of CPU-hours when compared to a traditional server-based approach using a cluster.
+Because it leverages the Google's severless data warehouse, all steps specific to ASM-calling (as opposed to alignment, variant calling, and methylation calling) are about ~500x more efficient in terms of CPU-hours when compared to a traditional server-based approach using a cluster.
 
 This pipeline starts from the zipped fastq files hosted on a bucket and outputs a table on BigQuery of all regions in a sample showing allele-specific methylation.
 
@@ -61,13 +61,15 @@ Note that the user can choose the reference genome to align the bisulfite-conver
 - Bismark_v0.19.0
 - cutadapt-1.4.2
 - TrimGalore-0.4.5
-- picard-tools-1.97/picard-tools-1.97
+- picard-tools-1.97
 - jre1.7.0_25
 - BisSNP-0.82.2
 
-Note #1: that we need to use a specific version of JAVA to be able to run BisSNP.All these packages are included in the Docker-generated image `gcr.io/hackensack-tyco/wgbs-asm`. Bis-SNP reports SNPs in positive strand of the reference genome (it's NOT bisulfite-converted)
+All these packages are included in the Docker-generated image `gcr.io/hackensack-tyco/wgbs-asm`.
 
-Note #2: Bismark reports sequences it aligns in positive strand but it is bisulfite-converted, requiring careful handling of ASM calling.
+Note #1: we need to use a specific version of JAVA to be able to run BisSNP.
+
+Note #2: Bismark reports sequences it aligns reads in positive strand but it is bisulfite-converted. Bis-SNP reports SNPs in positive strand of the reference genome, which is not bisulfite-converted. Therefore, handling these two datasets together requires additional steps.
 
 ## Installation
 
@@ -85,7 +87,7 @@ To run You need to install GCP's Python package called ["dsub"](https://github.c
 
 5. Copy, sequentially, all instructions from main.sh into the terminal, block by block (a "block" is a set of instructions included in between two headlines). 
 
-6. Before moving on to the next instructions block, re-run the jobs that fail if you use preemptive machines (failure rate is about 5-10% when using preemptive machines). See below how to do that.
+6. Before moving on to the next instructions block, re-run the jobs that fail if you use preemptible machines (failure rate is about 5-10% when using preemptible machines). See below how to do that.
 
 ## Prepare the fastq files to be analyzed
 
@@ -102,7 +104,7 @@ Do not change the titles of the columns of this CSV file.
 
 ## Re-run failed jobs
 
-If you use preemptive machines, they may be taken back by GCP before the job ends. If this is the case, then you need to re-run the tasks that could not be completed before the termination of the preemptive machines executing them. The code below will enable you to create a new TSV of all the tasks that could not complete on time.
+If you use preemptible machines, they may be taken back by GCP before the job ends. If this is the case, then you need to re-run the tasks that could not be completed before the termination of the preemptible machines executing them. The code below will enable you to create a new TSV of all the tasks that could not complete on time.
 
 ```
 JOB="TASK"

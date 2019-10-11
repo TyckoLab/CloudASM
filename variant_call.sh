@@ -43,14 +43,6 @@ $JAVA/java -Xmx50g \
     -nt 12 \
     -out_modes EMIT_HET_SNPS_ONLY
 
-echo "folder content before sorting the VCF"
-echo "OUTPUT_DIR"
-ls -lh $(dirname "${OUTPUT_DIR}")
-
-echo "BAM_BAI"
-ls -lh $(dirname "${BAM_BAI}")
-
-
 echo "Sorting the VCF by coordinate..."
 perl ${BIS_SNP}/sortByRefAndCor.pl \
     --k 1 \

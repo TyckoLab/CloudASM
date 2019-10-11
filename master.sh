@@ -92,7 +92,7 @@ done < sample_id.txt
 
 # Create a dataset on BigQuery for the samples to be analyzed for ASM
 #(Note: very few regions are available for Big Query datasets)
-bq --location=us-east4 mk --dataset ${PROJECT_ID}:${DATASET_ID}
+bq --location=us mk --dataset ${PROJECT_ID}:${DATASET_ID}
 
 # Create buckets for the analysis and for the ref genome / variant database
 gsutil mb -c standard -l $REGION_ID gs://${OUTPUT_B} 
@@ -407,7 +407,9 @@ dsub \
 
 ########################## Variant call  ################################
 
-# Takes 5 hours for the largest chromosomes.
+# Takes 6-7 hours for the largest chromosomes. 
+# The largest chromosomes (1-5) should probably be run without
+# using preemptible
 
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env CHR\t--input BAM_BAI\t--output OUTPUT_DIR" > variant_call.tsv
@@ -424,6 +426,7 @@ dsub \
   --project $PROJECT_ID \
   --machine-type n1-standard-16 \
   --disk-size 400 \
+  --preemptible \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
   --logging gs://$OUTPUT_B/logging/ \
@@ -455,20 +458,19 @@ dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
-  --preemptible \
-  --image $DOCKER_GENOMICS \
+  --image $DOCKER_GCP \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
-  --env CPG_COV="${CPG_COV}" \
   --command 'bq --location=US load \
                --replace=false \
                --source_format=CSV \
                --skip_leading_rows 1 \
-               --field_delimiter " " \
+               --field_delimiter "\t" \
                ${DATASET_ID}.${SAMPLE}_CpG${STRAND} \
                ${CONTEXT} \
                read_id:STRING,meth_state:STRING,chr:STRING,pos:INTEGER,meth_call:STRING' \
   --tasks context_to_bq.tsv \
+  --name 'export-cpg' \
   --wait
 
 
@@ -487,11 +489,11 @@ dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
-  --image $DOCKER_GENOMICS \
-  --preemptible \
+  --image $DOCKER_GCP \
   --logging gs://$OUTPUT_B/logging/ \
   --env PROJECT_ID="${PROJECT_ID}" \
   --env DATASET_ID="${DATASET_ID}" \
+  --env CPG_COV="${CPG_COV}" \
   --env OUTPUT_B="$OUTPUT_B" \
   --script ${SCRIPTS}/append_context.sh \
   --tasks append_context.tsv \
