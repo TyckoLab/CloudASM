@@ -615,20 +615,6 @@ dsub \
 # This removes about 5% of SNPs. Takes ~30min for the small chr.
 # Finds out where the SNP can be found with no ambiguity (CT, GA, or both)
 
-# Prepare TSV file
-echo -e "--env SAMPLE\t--env VCF" > vcf_to_bq.tsv
-
-while read SAMPLE ; do
-  
-  for CHR in `seq 1 22` X Y ; do 
-    echo -e "$SAMPLE\tgs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}_filtered.vcf" >> vcf_to_bq.tsv
-  done
-  
-  # Delete existing VCF files on Big Query
-  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_uploaded
-
-done < sample_id.txt
-
 # We append all chromosomes files in the same file.
 dsub \
   --provider google-v2 \
@@ -637,15 +623,21 @@ dsub \
   --image ${DOCKER_GCP} \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
-  --command 'bq --location=US load \
-               --replace=false \
-               --source_format=CSV \
-               --field_delimiter "\t" \
-               --skip_leading_rows 117 \
-               ${DATASET_ID}.${SAMPLE}_vcf_filtered_uploaded \
-               ${VCF} \
-               chr:STRING,pos:STRING,snp_id:STRING,ref:STRING,alt:STRING,qual:FLOAT,filter:STRING,info:STRING,format:STRING,data:STRING' \
-  --tasks vcf_to_bq.tsv \
+  --env OUTPUT_B="${OUTPUT_B}" \
+  --command 'bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_uploaded \
+            && for CHR in `seq 1 22` X Y ; do 
+                sleep 1s \
+                && bq --location=US load \
+                  --replace=false \
+                  --source_format=CSV \
+                  --field_delimiter "\t" \
+                  --skip_leading_rows 117 \
+                  ${DATASET_ID}.${SAMPLE}_vcf_filtered_uploaded \
+                  gs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}_filtered.vcf \
+                  chr:STRING,pos:STRING,snp_id:STRING,ref:STRING,alt:STRING,qual:FLOAT,filter:STRING,info:STRING,format:STRING,data:STRING
+               done' \
+  --tasks all_samples.tsv \
+  --name 'upld-filt-vcf' \
   --wait
 
 # Clean the VCF -- create temporary tables (one per chr)
