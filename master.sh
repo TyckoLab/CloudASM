@@ -532,7 +532,7 @@ dsub \
                --replace=false \
                --source_format=CSV \
                --field_delimiter "\t" \
-               --max_bad_records 10 \
+               --max_bad_records 1 \
                ${DATASET_ID}.${SAMPLE}_recal_sam_uploaded \
                ${SAM} \
                read_id:STRING,flag:INTEGER,chr:STRING,read_start:INTEGER,mapq:INTEGER,cigar:STRING,rnext:STRING,mate_read_start:INTEGER,insert_length:INTEGER,seq:STRING,score:STRING,bismark:STRING,picard_flag:STRING,read_g:STRING,genome_strand:STRING,NM_tag:STRING,meth:STRING,score_before_recal:STRING,read_strand:STRING' \
@@ -558,13 +558,13 @@ dsub \
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
-  --preemptible \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
   --command 'gsutil rm ${SAM} && bq rm -f -t ${DATASET_ID}.${SAMPLE}_recal_sam_uploaded' \
   --tasks sam_to_bq.tsv \
+  --name 'delete-sam' \
   --wait
 
 
@@ -572,19 +572,7 @@ dsub \
 
 # The raw VCFs are used to remove CpGs that overlap with a SNP in the raw VCF, confirmed by the variant database.
 
-# Prepare TSV file
-echo -e "--env SAMPLE\t--env VCF" > raw_vcf_to_bq.tsv
-
-while read SAMPLE ; do
-  for CHR in `seq 1 22` X Y ; do 
-    echo -e "$SAMPLE\tgs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}_raw.vcf" >> raw_vcf_to_bq.tsv
-  done
-  
-  # Delete existing SAM on big query
-  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_raw_uploaded
-done < sample_id.txt
-
-# We append all chromosomes files in the same file.
+# We append all VCF for each chromosome in the same file.
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -592,15 +580,21 @@ dsub \
   --image ${DOCKER_GCP} \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
-  --command 'bq --location=US load \
-               --replace=false \
-               --source_format=CSV \
-               --field_delimiter "\t" \
-               --skip_leading_rows 116 \
-               ${DATASET_ID}.${SAMPLE}_vcf_raw_uploaded \
-               ${VCF} \
-               chr:STRING,pos:STRING,snp_id:STRING,ref:STRING,alt:STRING,qual:FLOAT,filter:STRING,info:STRING,format:STRING,data:STRING' \
-  --tasks raw_vcf_to_bq.tsv \
+  --env OUTPUT_B="${OUTPUT_B}" \
+  --command 'bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_raw_uploaded \
+             && for CHR in `seq 1 22` X Y ; do 
+                sleep 1s \
+                && bq --location=US load \
+                  --replace=false \
+                  --source_format=CSV \
+                  --field_delimiter "\t" \
+                  --skip_leading_rows 116 \
+                  ${DATASET_ID}.${SAMPLE}_vcf_raw_uploaded \
+                  gs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}_raw.vcf \
+                  chr:STRING,pos:STRING,snp_id:STRING,ref:STRING,alt:STRING,qual:FLOAT,filter:STRING,info:STRING,format:STRING,data:STRING
+              done' \
+  --tasks all_samples.tsv \
+  --name 'export-raw-vcf' \
   --wait
 
 # Clean the raw VCF that was uploaded and delete the "uploaded" table 
@@ -615,7 +609,17 @@ dsub \
   --tasks all_samples.tsv \
   --wait
 
-
+  --command 'for CHR in `seq 1 22` X Y ; do \
+                sleep 1s \
+                && bq --location=US load \
+                  --replace=false \
+                  --source_format=CSV \
+                  --field_delimiter "\t" \
+                  --skip_leading_rows 116 \
+                  ${DATASET_ID}.${SAMPLE}_vcf_raw_uploaded \
+                  gs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}_raw.vcf \
+                  chr:STRING,pos:STRING,snp_id:STRING,ref:STRING,alt:STRING,qual:FLOAT,filter:STRING,info:STRING,format:STRING,data:STRING \
+              done' \
 
 ########################## Export to BQ and clean the filtered VCF ##################
 
