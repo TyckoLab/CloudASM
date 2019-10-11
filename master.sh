@@ -512,7 +512,7 @@ echo -e "--env SAMPLE\t--env SAM" > sam_to_bq.tsv
 
 while read SAMPLE ; do
   for CHR in `seq 1 22` X Y ; do 
-    echo -e "$SAMPLE\tgs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.sam" >> sam_to_bq.tsv
+    echo -e "$SAMPLE\tgs://$OUTPUT_B/${SAMPLE}/variants_per_chr/${SAMPLE}_chr${CHR}_recal.sam" >> sam_to_bq.tsv
   done
   
   # Delete existing SAM on big query
@@ -532,10 +532,12 @@ dsub \
                --replace=false \
                --source_format=CSV \
                --field_delimiter "\t" \
+               --max_bad_records 10 \
                ${DATASET_ID}.${SAMPLE}_recal_sam_uploaded \
                ${SAM} \
                read_id:STRING,flag:INTEGER,chr:STRING,read_start:INTEGER,mapq:INTEGER,cigar:STRING,rnext:STRING,mate_read_start:INTEGER,insert_length:INTEGER,seq:STRING,score:STRING,bismark:STRING,picard_flag:STRING,read_g:STRING,genome_strand:STRING,NM_tag:STRING,meth:STRING,score_before_recal:STRING,read_strand:STRING' \
   --tasks sam_to_bq.tsv \
+  --name 'export-sam' \
   --wait
 
 # Clean the SAM on BigQuery
