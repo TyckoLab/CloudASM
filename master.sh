@@ -609,18 +609,6 @@ dsub \
   --tasks all_samples.tsv \
   --wait
 
-  --command 'for CHR in `seq 1 22` X Y ; do \
-                sleep 1s \
-                && bq --location=US load \
-                  --replace=false \
-                  --source_format=CSV \
-                  --field_delimiter "\t" \
-                  --skip_leading_rows 116 \
-                  ${DATASET_ID}.${SAMPLE}_vcf_raw_uploaded \
-                  gs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}_raw.vcf \
-                  chr:STRING,pos:STRING,snp_id:STRING,ref:STRING,alt:STRING,qual:FLOAT,filter:STRING,info:STRING,format:STRING,data:STRING \
-              done' \
-
 ########################## Export to BQ and clean the filtered VCF ##################
 
 # Filter out the SNPs that are not within 500bp of a CpG that is at least 10x covered.
@@ -638,7 +626,6 @@ while read SAMPLE ; do
   
   # Delete existing VCF files on Big Query
   bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_uploaded
-  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf
 
 done < sample_id.txt
 
@@ -675,6 +662,9 @@ dsub \
   --wait
 
 # Append all temporary VCFs together into one single clean VCF
+
+  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf
+
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \

@@ -19,7 +19,7 @@ bq query \
           alt,
           SAFE_CAST(pos as INT64) as pos
         FROM 
-          ${DATASET_ID}.${SAMPLE}_vcf_raw_uploaded
+          ${DATASET_ID}.${SAMPLE}_vcf_filtered_uploaded
         WHERE
           -- demand that the SNP is like rs-
           snp_id LIKE '%rs%'
