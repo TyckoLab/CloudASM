@@ -649,7 +649,7 @@ dsub \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
-  --script ${SCRIPTS}/clean_vcf.sh \
+  --script ${SCRIPTS}/clean_filtered_vcf.sh \
   --tasks all_chr.tsv \
   --wait
 
