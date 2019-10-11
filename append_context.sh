@@ -151,5 +151,5 @@ bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_CpGcov_bedgraph
 bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_merged_context_bed
 
 echo "Delete raw files"
-#bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOB
-#bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOT
+bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOB
+bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOT
