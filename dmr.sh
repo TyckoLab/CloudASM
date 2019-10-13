@@ -14,7 +14,7 @@ bq --location=US load \
 # Delete SAMPLE_cpg_genotype (the new file sample_cpg_asm has the same information and the ASM p-value)
 bq rm -f -t ${DATASET_ID}.${SAMPLE}_cpg_genotype
 
-# Query to select the SNPs with at least CPG_PER_DMR nearby.
+echo "Query to select the SNPs with at least CPG_PER_DMR nearby."
 bq query \
     --use_legacy_sql=false \
     --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_het_snp \
@@ -34,10 +34,9 @@ bq query \
                         fisher_pvalue,
                         ref_cov,
                         alt_cov
-                        )
+                    )
                     ORDER BY pos
-                    ) 
-                    AS cpg
+                ) AS cpg
             FROM ${DATASET_ID}.${SAMPLE}_cpg_asm
             GROUP BY snp_id
         ),
@@ -59,7 +58,7 @@ bq query \
         SELECT * FROM HET_SNP WHERE nb_cpg >= ${CPG_PER_DMR}
         "
 
-# Make a table with all the possible DMRs (before computing p-value)
+echo "Make a table with all the possible DMRs (before computing p-value)"
 bq query \
     --use_legacy_sql=false \
     --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_snp_for_dmr \

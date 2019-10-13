@@ -737,7 +737,7 @@ dsub \
 # We also remove the reads where the score of the nucleotide with the SNP is below 30
 # This removes ~ 7% of the reads.
 
-# Start: 8:25am
+# Takes ~2 min
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -759,6 +759,7 @@ dsub \
 
 # We also remove CpG where a SNP occurs on the C or G
 # This removes 1% of well-covered CpGs.
+# Takes about ~ 10 minutes
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -783,7 +784,7 @@ while read SAMPLE ; do
     echo -e "gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_cpg_genotype.csv\tgs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_cpg_asm.csv" >> cpg_asm.tsv
 done < sample_id.txt
 
-# Using python environment.
+# Takes about one hour (4 CPU-hours)
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -808,9 +809,10 @@ while read SAMPLE ; do
 done < sample_id.txt
 
 # Requesting 
-# 1/ at least NB_CPG_SIG CpGs with significative ASM and in the same direction per DMR 
+# 1/ at least CPG_PER_DMR CpGs
 # 2/ a DMR_EFFECT difference between the REF and ALT (computed across reads) across CpGs that are located in between the two extreme significant CpGs
 # Removes ~50% of SNPs.
+# Takes one minute
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -819,13 +821,14 @@ dsub \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
-  --env CPG_PER_DMR="${NB_CPG_SIG}" \
+  --env CPG_PER_DMR="${CPG_PER_DMR}" \
   --script ${SCRIPTS}/dmr.sh \
   --tasks all_samples.tsv \
   --wait
 
 
 # Compute Wilcoxon's p-value per DMR between the REF reads and the ALT reads
+# Calculate the number of consecutive ASMs in the same direction
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
