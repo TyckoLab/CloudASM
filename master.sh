@@ -641,6 +641,7 @@ dsub \
   --wait
 
 # Clean the VCF -- create temporary tables (one per chr)
+# One hour for the largest chromosomes.
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -654,9 +655,7 @@ dsub \
   --wait
 
 # Append all temporary VCFs together into one single clean VCF
-
-  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf
-
+# (also delete the file that concatenates all the uploads)
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -665,19 +664,19 @@ dsub \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
-  --command 'bq cp \
-               --append_table \
-               ${DATASET_ID}.${SAMPLE}_vcf_chr${CHR}_tmp \
-               ${DATASET_ID}.${SAMPLE}_vcf \
-             && bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_chr${CHR}_tmp' \
-  --tasks all_chr.tsv \
+  --command 'bq rm -f -t  ${DATASET_ID}.${SAMPLE}_vcf_filtered_uploaded \
+            && bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf \
+            && for CHR in `seq 1 22` X Y ; do 
+                sleep 1s \
+                && bq cp --append_table \
+                    ${DATASET_ID}.${SAMPLE}_vcf_chr${CHR}_tmp \
+                    ${DATASET_ID}.${SAMPLE}_vcf \
+                && bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_chr${CHR}_tmp
+              done' \
+  --tasks all_samples.tsv \
+  --name 'concat-vcf' \
   --wait
 
-# Delete all raw VCF files from BigQuery
-awk 'BEGIN { FS=OFS="\t" } {if (NR!=1) print $0}' all_samples.tsv > just_samples.txt
-while read SAMPLE ; do 
-  bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_raw_uploaded
-done < just_samples.txt
 
 ########################## Find the read IDs that overlap the snp ##################
 
@@ -688,6 +687,7 @@ while read SAMPLE ; do
 
 done < sample_id.txt
 
+#1h20min for the largest chromosomes
 # Create one file per chromosome
 dsub \
   --provider google-v2 \
@@ -703,6 +703,7 @@ dsub \
 
 # Merge all chromosome files into a single file per sample 
 # and delete the individual chromosome files
+# Takes a few minutes
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -711,12 +712,17 @@ dsub \
   --logging gs://$OUTPUT_B/logging/ \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
-  --command 'bq cp \
-               --append_table \
-               ${DATASET_ID}.${SAMPLE}_vcf_reads_tmp_${CHR} \
-               ${DATASET_ID}.${SAMPLE}_vcf_reads \
-             && bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_reads_tmp_${CHR}' \
-  --tasks all_chr.tsv \
+  --command 'bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_reads \
+            && for CHR in `seq 1 22` X Y ; do 
+                 sleep 1s \
+                 && bq cp \
+                    --append_table \
+                    ${DATASET_ID}.${SAMPLE}_vcf_reads_tmp_${CHR} \
+                    ${DATASET_ID}.${SAMPLE}_vcf_reads \
+                    && bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_reads_tmp_${CHR}
+               done' \
+  --tasks all_samples.tsv \
+  --name 'app-vcf-reads' \
   --wait
 
 
@@ -731,7 +737,7 @@ dsub \
 # We also remove the reads where the score of the nucleotide with the SNP is below 30
 # This removes ~ 7% of the reads.
 
-# Tag the read
+# Start: 8:25am
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -741,7 +747,7 @@ dsub \
   --env OUTPUT_B="${OUTPUT_B}" \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
-  --env SNP_SCORE="${SNP_SCORE}"
+  --env SNP_SCORE="${SNP_SCORE}" \
   --script ${SCRIPTS}/read_genotype.sh \
   --tasks all_samples.tsv \
   --wait
