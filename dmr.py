@@ -39,10 +39,13 @@ df = json_normalize(data)
 
 # Function to extract Wilcoxon p-value (5-digit rounding)
 def wilcoxon_pvalue(row):
-  _, pvalue =  stats.mannwhitneyu(json_normalize(row['ref']), \
-                                json_normalize(row['alt']), \
-                                )
-  return round(pvalue,5)
+    try:
+        _, pvalue = stats.mannwhitneyu(json_normalize(row['ref']), json_normalize(row['alt']))
+        return round(pvalue,5)
+    # If the ref and alt datasets are equal or one is included in the other one:
+    except ValueError:
+        return 1
+
 
 # Create a column with the p-value
 df['wilcoxon_pvalue'] = df.apply(wilcoxon_pvalue, axis = 1)
@@ -68,5 +71,3 @@ df['nb_consecutive_asm'] = df.apply(consecutive_cpg, axis = 1)
 
 # Save to JSON
 df.to_json(OUTPUT_FILE, orient = "records", lines = True)
-
-

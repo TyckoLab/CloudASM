@@ -829,6 +829,7 @@ dsub \
 
 # Compute Wilcoxon's p-value per DMR between the REF reads and the ALT reads
 # Calculate the number of consecutive ASMs in the same direction
+# Takes 4 minutes (0.2 CPU-hours)
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -844,12 +845,7 @@ dsub \
 
 ########################## Provide a final list of DMRs ##################
 
-# Delete master file of all ASM across all samples
-while read SAMPLE ; do
-  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.asm_snp
-
-done < sample_id.txt
-
+# Takes 3 minutes (0.05 CPU-hours)
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -859,6 +855,7 @@ dsub \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
   --env DMR_EFFECT="${DMR_EFFECT}" \
+  --env CPG_PER_DMR="${CPG_PER_DMR}" \
   --script ${SCRIPTS}/summary.sh \
   --tasks all_samples.tsv \
   --wait
@@ -867,6 +864,7 @@ dsub \
 #################################################################
 
 
+CHECK THAT THE NUMBER OF CONSECUTIVE CPGS ARE IN THE SAME DIRECTION AS THE DMR ASM
 
 
 # Delete split fastq files to save space on the bucket.
