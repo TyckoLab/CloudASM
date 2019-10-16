@@ -2,7 +2,9 @@
 ########################## ASM Variables ################################
 
 # Reference genome
-GENOME="hg19" # or "GRCh38"
+GENOME="hg19" # "GRCh38" or "hg19"
+
+# SNP database used to "destroy" CpG sites
 
 # Effect size required at the DMR level for an ASM.
 DMR_EFFECT="0.2"
@@ -27,30 +29,36 @@ PROJECT_ID="hackensack-tyco"
 REGION_ID="us-central1"
 ZONE_ID="us-central1-b"
 
-# Big Query variables
+# Big Query variable (do not use dashes in the name)
 DATASET_ID="wgbs_encode" 
 
-# Cloud storage variables
-INPUT_B="encode-wgbs"
+# Cloud storage variables (use dashes rather than underscores)
+INPUT_B="encode-wgbs" # where you put your raw files
 OUTPUT_B="em-encode-paper" # will be created by the script
-REF_DATA_B="wgbs-ref-files" 
-REF_GENOME="gs://$REF_DATA_B/$GENOME/ref_genome"
-ALL_VARIANTS="gs://$REF_DATA_B/$GENOME/variants/*.vcf"
+REF_DATA_B="wgbs-ref-files" # will be created by the script
 
 # Path of where you downloaded the Github scripts
 SCRIPTS="$HOME/GITHUB_REPOS/wgbs-asm/"
 
-########################## Docker Images used by the pipeline ################################
+########################## Useful paths (do not modify) ################################
 
-# Genomic packages 
+# Path where to store the logs of the jobs
+LOG="gs://$OUTPUT_B/logging"
+
+# Folder to the bisulfite-converted reference genome
+REF_GENOME="gs://$REF_DATA_B/$GENOME/ref_genome" # do not modify
+
+# Variant database used in SNP calling
+ALL_VARIANTS="gs://$REF_DATA_B/$GENOME/variants/*.vcf" # do not modify
+
+# Docker image with genomic packages 
 DOCKER_GENOMICS="gcr.io/hackensack-tyco/wgbs-asm"
 
-# Light-weight python image with statistical packages.
+# Light-weight python Docker image with statistical packages.
 DOCKER_PYTHON="gcr.io/hackensack-tyco/python"
 
-# Off-the-shelf GCP image for GCP-only jobs
+# Off-the-shelf Docker image for GCP-only jobs
 DOCKER_GCP="google/cloud-sdk:255.0.0"
-
 
 ########################## Download sample info file ################################
 
@@ -113,7 +121,7 @@ dsub \
   --disk-size 800 \
   --machine-type n1-standard-4 \
   --env GENOME="${GENOME}" \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --output-recursive OUTPUT_DIR="gs://${REF_DATA_B}/${GENOME}" \
   --script ${SCRIPTS}/preparation.sh \
   --wait
@@ -141,7 +149,7 @@ dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --machine-type n1-standard-2 \
   --disk-size 2000 \
   --preemptible \
@@ -198,7 +206,7 @@ dsub \
   --image $DOCKER_GENOMICS \
   --machine-type n1-standard-2 \
   --preemptible \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --command 'trim_galore \
       -a AGATCGGAAGAGCACACGTCTGAAC \
       -a2 AGATCGGAAGAGCGTCGTGTAGGGA \
@@ -255,7 +263,7 @@ dsub \
   --machine-type n1-standard-16 \
   --preemptible \
   --disk-size 40 \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --input-recursive REF_GENOME="${REF_GENOME}" \
   --command 'bismark_nozip \
                 -q \
@@ -296,7 +304,7 @@ dsub \
   --preemptible \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --script ${SCRIPTS}/split_bam.sh \
   --tasks split_bam.tsv \
   --wait
@@ -324,7 +332,7 @@ dsub \
   --disk-size 120 \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --script ${SCRIPTS}/merge_bam.sh \
   --tasks merge_bam.tsv \
   --wait
@@ -352,7 +360,7 @@ dsub \
   --disk-size 300 \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --command 'bismark_methylation_extractor \
                   -p \
                   --no_overlap \
@@ -397,7 +405,7 @@ dsub \
   --disk-size 400 \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --input REF_GENOME="${REF_GENOME}/*" \
   --input ALL_VARIANTS="${ALL_VARIANTS}" \
   --script ${SCRIPTS}/bam_recalibration.sh \
@@ -429,7 +437,7 @@ dsub \
   --preemptible \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --input REF_GENOME="${REF_GENOME}/*" \
   --input ALL_VARIANTS="${ALL_VARIANTS}" \
   --script ${SCRIPTS}/variant_call.sh \
@@ -459,7 +467,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image $DOCKER_GCP \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --command 'bq --location=US load \
                --replace=false \
@@ -490,7 +498,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image $DOCKER_GCP \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --env PROJECT_ID="${PROJECT_ID}" \
   --env DATASET_ID="${DATASET_ID}" \
   --env CPG_COV="${CPG_COV}" \
@@ -526,7 +534,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --command 'bq --location=US load \
                --replace=false \
@@ -546,7 +554,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
   --script ${SCRIPTS}/clean_sam.sh \
@@ -560,7 +568,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --command 'gsutil rm ${SAM} && bq rm -f -t ${DATASET_ID}.${SAMPLE}_recal_sam_uploaded' \
   --tasks sam_to_bq.tsv \
@@ -578,7 +586,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
   --command 'bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_raw_uploaded \
@@ -603,7 +611,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --script ${SCRIPTS}/clean_raw_vcf.sh \
   --tasks all_samples.tsv \
@@ -621,7 +629,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
   --command 'bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_uploaded \
@@ -647,7 +655,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
   --script ${SCRIPTS}/clean_filtered_vcf.sh \
@@ -661,7 +669,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
   --command 'bq rm -f -t  ${DATASET_ID}.${SAMPLE}_vcf_filtered_uploaded \
@@ -694,7 +702,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
   --script ${SCRIPTS}/reads_overlap_snp.sh \
@@ -709,7 +717,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
   --command 'bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_reads \
@@ -743,7 +751,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --env OUTPUT_B="${OUTPUT_B}" \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
@@ -765,7 +773,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --env OUTPUT_B="${OUTPUT_B}" \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
@@ -792,7 +800,7 @@ dsub \
   --disk-size 50 \
   --machine-type n1-standard-4 \
   --image ${DOCKER_PYTHON} \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --script ${SCRIPTS}/asm_single_cpg.py \
   --tasks cpg_asm.tsv \
   --wait
@@ -818,7 +826,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
   --env CPG_PER_DMR="${CPG_PER_DMR}" \
@@ -837,7 +845,7 @@ dsub \
   --disk-size 30 \
   --machine-type n1-standard-4 \
   --image ${DOCKER_PYTHON} \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --script ${SCRIPTS}/dmr.py \
   --tasks dmr.tsv \
   --wait
@@ -851,7 +859,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
-  --logging gs://$OUTPUT_B/logging/ \
+  --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
   --env DMR_EFFECT="${DMR_EFFECT}" \
