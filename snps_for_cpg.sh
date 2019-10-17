@@ -60,8 +60,8 @@ if [ "${SNPS_FOR_CPG}" = "common_snp" ]; then
         ),
     FORMAT_DATA AS (
         SELECT
-            chr,
-            pos,
+            chr AS chr_snp,
+            pos AS pos_snp,
             snp_id,
             SAFE_CAST(max_freq AS FLOAT64) AS max
         FROM

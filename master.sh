@@ -577,11 +577,9 @@ dsub \
   --wait
 
 
-##################################################################################################################################
-########################## Prepare SNP database to destroy CpGs ################################
-##################################################################################################################################
 
-# We append all VCF for each chromosome in the same file.
+########################## Prepare SNP database to destroy CpGs ################################
+
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -599,17 +597,6 @@ dsub \
   --name 'snps-for-cpg' \
   --wait
 
-# Clean the database of SNPs used to destroy CpG sites.
-dsub \
-  --provider google-v2 \
-  --project $PROJECT_ID \
-  --zones $ZONE_ID \
-  --image ${DOCKER_GCP} \
-  --logging $LOG \
-  --env DATASET_ID="${DATASET_ID}" \
-  --script ${SCRIPTS}/clean_raw_vcf.sh \
-  --tasks all_samples.tsv \
-  --wait
 
 ########################## Export to BQ and clean the filtered VCF ##################
 
