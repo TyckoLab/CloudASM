@@ -6,7 +6,7 @@
 # The raw VCF file is a file used to remove CpGs that may overlap with SNPs identified in there
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_snps \
+    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_snps_for_cpg \
     --replace=true \
     "
     SELECT 

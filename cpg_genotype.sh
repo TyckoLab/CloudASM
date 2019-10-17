@@ -19,7 +19,7 @@ bq query \
                 chr_snp, 
                 pos_snp AS pos_snp_c, 
                 pos_snp + 1 AS pos_snp_g
-            FROM ${DATASET_ID}.${SAMPLE}_snps
+            FROM ${DATASET_ID}.${SAMPLE}_snps_for_cpg
         ),
         CONTEXT_FILTERED_C AS (
             SELECT distinct chr, pos FROM CONTEXT

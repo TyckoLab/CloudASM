@@ -4,7 +4,9 @@
 # Reference genome
 GENOME="hg19" # "GRCh38" or "hg19"
 
-# SNP database used to "destroy" CpG sites
+# SNP database used to "destroy" CpG sites that overlap with them
+SNPS_FOR_CPG="variant_call_raw" # "variant_call_raw" or "variant_call_filtered" or "common_snp"
+SNP_FREQ="0.05" # only used if the option "common_snp" is selected.
 
 # Effect size required at the DMR level for an ASM.
 DMR_EFFECT="0.2"
@@ -576,7 +578,9 @@ dsub \
   --wait
 
 
-########################## Export raw VCF to Big Query (one per sample) ################################
+##################################################################################################################################
+########################## Prepare SNP database to destroy CpGs ################################
+##################################################################################################################################
 
 # The raw VCFs are used to remove CpGs that overlap with a SNP in the raw VCF, confirmed by the variant database.
 
