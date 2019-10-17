@@ -14,7 +14,7 @@ bq query \
             SELECT * 
             FROM ${DATASET_ID}.${SAMPLE}_context
         ),
-        VCF_RAW AS (
+        SNPS_FOR_CPG AS (
             SELECT 
                 chr_snp, 
                 pos_snp AS pos_snp_c, 
@@ -24,12 +24,12 @@ bq query \
         CONTEXT_FILTERED_C AS (
             SELECT distinct chr, pos FROM CONTEXT
             EXCEPT DISTINCT
-            SELECT distinct chr_snp, pos_snp_c FROM VCF_RAW
+            SELECT distinct chr_snp, pos_snp_c FROM SNPS_FOR_CPG
         ),
         CONTEXT_FILTERED_CG AS (
             SELECT chr, pos FROM CONTEXT_FILTERED_C
             EXCEPT DISTINCT
-            SELECT chr_snp, pos_snp_g FROM VCF_RAW
+            SELECT chr_snp, pos_snp_g FROM SNPS_FOR_CPG
         ),
         FILTERED AS (
             SELECT chr AS chr_filt, pos AS pos_filt
@@ -41,7 +41,7 @@ bq query \
         ON chr_filt = chr AND pos = pos_filt
         )
         SELECT chr, pos, meth, cov, read_id FROM CONTEXT_FILTERED_READ
-        --SELECT * FROM VCF_RAW
+        --SELECT * FROM SNPS_FOR_CPG
         "
 
 # Create a table with as many rows as possible for CpG x SNP x read_id
