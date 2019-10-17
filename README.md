@@ -37,6 +37,11 @@ To catch a "true positive" phenomenon of allele-specific methylation, we use two
 1. single CpG level ASM ("CpG ASM") where we estimate if there is ASM on a CpG that is at least 5x covered on both alleles. We use a cut-off p-value of 0.05 on an exact Fisher's test.
 2. ASM over a region delimited by CpGs that are found on the same reads as the SNP. The region is delimited by two CpGs showing ASM, must contain at least 3 CpGs (variable `CPG_PER_DMR`), must have at least 2 consecutive CpGs with ASM in the same direction (variable `CONSECUTIVE_CPG`), must have an effect size of at least 20% between the two allele (variable `DMR_EFFECT`). The effect size is the difference in methylation percentage between the two alleles calculated across all CpGs in the DMR. We use a p-value of 0.05 on a Wilcoxon test.
 
+
+Note:
+
+- choosing `common_snp` is ~10x larger and will destroy a lot of CpGs.
+
 ## Pipeline overview
 
 The pipeline follows these steps:

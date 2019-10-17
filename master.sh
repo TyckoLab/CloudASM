@@ -5,7 +5,7 @@
 GENOME="hg19" # "GRCh38" or "hg19"
 
 # SNP database used to "destroy" CpG sites that overlap with them
-SNPS_FOR_CPG="variant_call_raw" # "variant_call_raw" or "variant_call_filtered" or "common_snp"
+SNPS_FOR_CPG="common_snp" # "raw.vcf" or "filtered.vcf" or "common_snp"
 SNP_FREQ="0.05" # only used if the option "common_snp" is selected.
 
 # Effect size required at the DMR level for an ASM.
@@ -510,7 +510,6 @@ dsub \
   --wait
 
 
-
 ########################## Export recal bam to Big Query, clean, and delete from bucket ################################
 
 # The SAM file was created by the variant_call script
@@ -582,34 +581,25 @@ dsub \
 ########################## Prepare SNP database to destroy CpGs ################################
 ##################################################################################################################################
 
-# The raw VCFs are used to remove CpGs that overlap with a SNP in the raw VCF, confirmed by the variant database.
-
 # We append all VCF for each chromosome in the same file.
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
-  --image ${DOCKER_GCP} \
+  --machine-type n1-standard-2 \
+  --disk-size 40 \
+  --image $DOCKER_GENOMICS \
   --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
-  --command 'bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_raw_uploaded \
-             && for CHR in `seq 1 22` X Y ; do 
-                sleep 1s \
-                && bq --location=US load \
-                  --replace=false \
-                  --source_format=CSV \
-                  --field_delimiter "\t" \
-                  --skip_leading_rows 116 \
-                  ${DATASET_ID}.${SAMPLE}_vcf_raw_uploaded \
-                  gs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}_raw.vcf \
-                  chr:STRING,pos:STRING,snp_id:STRING,ref:STRING,alt:STRING,qual:FLOAT,filter:STRING,info:STRING,format:STRING,data:STRING
-              done' \
+  --env SNPS_FOR_CPG="${SNPS_FOR_CPG}" \
+  --env SNP_FREQ="${SNP_FREQ}" \
+  --script ${SCRIPTS}/snps_for_cpg.sh \
   --tasks all_samples.tsv \
-  --name 'export-raw-vcf' \
+  --name 'snps-for-cpg' \
   --wait
 
-# Clean the raw VCF that was uploaded and delete the "uploaded" table 
+# Clean the database of SNPs used to destroy CpG sites.
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
