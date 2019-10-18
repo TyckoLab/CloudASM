@@ -1,5 +1,5 @@
 
-########################## ASM Variables ################################
+########################## ASM Variables (to be customized) ################################
 
 # Reference genome
 GENOME="hg19" # "GRCh38" or "hg19"
@@ -22,9 +22,9 @@ CPG_PER_DMR="3"
 CONSECUTIVE_CPG="2" 
 
 # Minimum reading score of the SNP
-SNP_SCORE="63" # In ASCII, 63 correponds to a quality score of 30. See this table: https://www.drive5.com/usearch/manual/quality_score.html
+SNP_SCORE="33" # In ASCII, 63 correponds to a quality score of 30. See this table: https://www.drive5.com/usearch/manual/quality_score.html
 
-########################## GCP variables ################################
+########################## GCP variables (to be customized) ################################
 
 # GCP global variables
 PROJECT_ID="hackensack-tyco"
@@ -486,14 +486,6 @@ dsub \
 
 ################################# Append context files and keep CpGs with 10x coverage min ########
 
-# Also this script exports bedgraph files of methylation and coverage to look into IGV for instance
-
-# Prepare TSV file
-echo -e "--env SAMPLE" > append_context.tsv
-
-while read SAMPLE ; do
-  echo -e "$SAMPLE" >> append_context.tsv
-done < sample_id.txt
 
 dsub \
   --provider google-v2 \
@@ -506,7 +498,7 @@ dsub \
   --env CPG_COV="${CPG_COV}" \
   --env OUTPUT_B="$OUTPUT_B" \
   --script ${SCRIPTS}/append_context.sh \
-  --tasks append_context.tsv \
+  --tasks all_samples.tsv \
   --wait
 
 
@@ -583,6 +575,7 @@ dsub \
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
+  --ssh \
   --zones $ZONE_ID \
   --machine-type n1-standard-2 \
   --disk-size 40 \
@@ -594,7 +587,6 @@ dsub \
   --env SNP_FREQ="${SNP_FREQ}" \
   --script ${SCRIPTS}/snps_for_cpg.sh \
   --tasks all_samples.tsv \
-  --name 'snps-for-cpg' \
   --wait
 
 
@@ -630,7 +622,7 @@ dsub \
   --wait
 
 # Clean the VCF -- create temporary tables (one per chr)
-# One hour for the largest chromosomes.
+# 1h30min for the largest chromosomes.
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -801,7 +793,7 @@ done < sample_id.txt
 # 1/ at least CPG_PER_DMR CpGs
 # 2/ a DMR_EFFECT difference between the REF and ALT (computed across reads) across CpGs that are located in between the two extreme significant CpGs
 # Removes ~50% of SNPs.
-# Takes one minute
+# Takes three minute
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \

@@ -3,6 +3,8 @@
 # Delete any previous database on Big Query
 bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_snps_for_cpg_raw 
 
+
+# If loop to determine which scenarion was selected by the user
 if [ "${SNPS_FOR_CPG}" = "common_snp" ]; then
     if [ "${GENOME}" = "hg19" ]; then
         COMMON_URL="http://hgdownload.soe.ucsc.edu/goldenPath/hg19/database/snp151Common.txt.gz"
