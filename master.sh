@@ -622,7 +622,7 @@ dsub \
   --wait
 
 # Clean the VCF -- create temporary tables (one per chr)
-# 1h30min for the largest chromosomes.
+# 2 hours for the largest chromosomes.
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -668,7 +668,7 @@ while read SAMPLE ; do
 
 done < sample_id.txt
 
-#1h20min for the largest chromosomes
+#3hours for the largest chromosomes
 # Create one file per chromosome
 dsub \
   --provider google-v2 \
