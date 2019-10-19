@@ -592,8 +592,6 @@ dsub \
 
 ########################## Export to BQ and clean the filtered VCF ##################
 
-# Filter out the SNPs that are not within 500bp of a CpG that is at least 10x covered.
-# This removes about 5% of SNPs. Takes ~30min for the small chr.
 # Finds out where the SNP can be found with no ambiguity (CT, GA, or both)
 
 # We append all chromosomes files in the same file.
@@ -622,7 +620,7 @@ dsub \
   --wait
 
 # Clean the VCF -- create temporary tables (one per chr)
-# 2 hours for the largest chromosomes.
+# a few minutes
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -665,7 +663,6 @@ dsub \
 # Delete all files to be replaced
 while read SAMPLE ; do
   bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_reads  
-
 done < sample_id.txt
 
 #3hours for the largest chromosomes

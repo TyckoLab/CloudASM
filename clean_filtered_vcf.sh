@@ -13,8 +13,6 @@ bq query \
         SELECT 
           chr,
           snp_id,
-          SAFE_CAST(pos AS INT64) - 250 AS inf_500, 
-          SAFE_CAST(pos AS INT64) + 250 AS sup_500,
           ref,
           alt,
           SAFE_CAST(pos as INT64) as pos
@@ -28,21 +26,8 @@ bq query \
           AND BYTE_LENGTH(alt) = 1
           -- below, we extract the coverage and demand that is it at least 10
           AND chr = '${CHR}'
-        ),
-      cpg_pos AS (
-        SELECT
-          chr AS chr_cpg_pos,
-          pos AS inf_cpg_pos,
-          pos AS sup_cpg_pos
-        FROM
-          ${DATASET_ID}.${SAMPLE}_context
-        WHERE
-          chr = '${CHR}'
-        GROUP BY
-          chr, pos
         )
-  -- We make sure that there is at least a variant that is 10x covered within 500bp of a CpG
-  -- since there are several CpG that may qualify we keep the distinct results
+  -- Find the strand where the SNP can be identified in bisulfite-converted reads
   SELECT DISTINCT 
     snp_id,
     chr,
@@ -61,10 +46,4 @@ bq query \
                 IF (ref = 'T' AND alt = 'C', TRUE, TRUE)))) AS GA_strand 
   FROM
      variants
-  -- Making sure that there are CpG within 500bp of the SNP
-  INNER JOIN
-    cpg_pos ON
-      cpg_pos.chr_cpg_pos = chr
-      AND cpg_pos.inf_cpg_pos >= inf_500
-      AND cpg_pos.sup_cpg_pos <= sup_500
   "
