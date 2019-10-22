@@ -24,6 +24,32 @@ CONSECUTIVE_CPG="2"
 # Minimum reading score of the SNP
 SNP_SCORE="33" # In ASCII, 63 correponds to a quality score of 30. See this table: https://www.drive5.com/usearch/manual/quality_score.html
 
+# Number of nucleotides in each human chromosome (do not change, except if you do not use human samples)
+1,249250621
+2,243199373
+3,198022430
+4,191154276
+5,180915260
+6,171115067
+7,159138663
+8,146364022
+9,141213431
+10,135534747
+11,135006516
+12,133851895
+13,115169878
+14	107349540
+15	102531392
+16	90354753
+17	81195210
+18	78077248
+19	59128983
+20	63025520
+21	48129895
+22	51304566
+X	155270560
+Y	59373566
+
 ########################## GCP variables (to be customized) ################################
 
 # GCP global variables
@@ -611,7 +637,7 @@ dsub \
                   --source_format=CSV \
                   --field_delimiter "\t" \
                   --skip_leading_rows 117 \
-                  ${DATASET_ID}.${SAMPLE}_vcf_filtered_uploaded \
+                  ${DATASET_ID}.${SAMPLE}_vcf_uploaded \
                   gs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}_filtered.vcf \
                   chr:STRING,pos:STRING,snp_id:STRING,ref:STRING,alt:STRING,qual:FLOAT,filter:STRING,info:STRING,format:STRING,data:STRING
                done' \
@@ -629,7 +655,7 @@ dsub \
   --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
-  --script ${SCRIPTS}/clean_filtered_vcf.sh \
+  --script ${SCRIPTS}/clean_vcf.sh \
   --tasks all_chr.tsv \
   --wait
 
