@@ -5,7 +5,7 @@
 # Remove the rows where the snp_id is not in the form of "rs"
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_chr${CHR}_tmp \
+    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf \
     --replace=true \
     "WITH
       -- We create a file with a 500bp window around the SNP and calculate the cov of the SNP
@@ -17,7 +17,7 @@ bq query \
           alt,
           SAFE_CAST(pos as INT64) as pos
         FROM 
-          ${DATASET_ID}.${SAMPLE}_vcf_filtered_uploaded
+          ${DATASET_ID}.${SAMPLE}_vcf_uploaded
         WHERE
           -- demand that the SNP is like rs-
           snp_id LIKE '%rs%'
@@ -25,7 +25,6 @@ bq query \
           AND BYTE_LENGTH(ref) = 1
           AND BYTE_LENGTH(alt) = 1
           -- below, we extract the coverage and demand that is it at least 10
-          AND chr = '${CHR}'
         )
   -- Find the strand where the SNP can be identified in bisulfite-converted reads
   SELECT DISTINCT 
