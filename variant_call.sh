@@ -8,14 +8,6 @@ BIS_SNP="/genomics-packages/BisSNP-0.82.2"
 TMP_DIR="/mnt/data/tmp/"
 mkdir -p ${TMP_DIR}
 
-############## Create a SAM file for each chr and upload to bucket
-
-# This file will be transfered to Big Query and deleted.
-
-echo "Create a SAM file with no header"
-samtools view -o \
-    $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.sam \
-    $(dirname "${BAM_BAI}")/${SAMPLE}_chr${CHR}_recal.bam
 
 ############## Variant call
 

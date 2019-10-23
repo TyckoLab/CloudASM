@@ -461,7 +461,7 @@ dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
   --machine-type n1-standard-16 \
-  --disk-size 400 \
+  --disk-size 300 \
   --preemptible \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
@@ -509,10 +509,7 @@ dsub \
   --name 'export-cpg' \
   --wait
 
-
-################################# Append context files and keep CpGs with 10x coverage min ########
-
-
+# Append context files and keep CpGs with 10x coverage min 
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -530,9 +527,22 @@ dsub \
 
 ########################## Export recal bam to Big Query, clean, and delete from bucket ################################
 
-# The SAM file was created by the variant_call script
-# we do it before cleaning the variant call because it removes the SAM from the bucket, 
-# which takes a lot of splace.
+
+# Create a SAM in the bucket
+dsub \
+  --provider google-v2 \
+  --project $PROJECT_ID \
+  --machine-type n1-standard-2 \
+  --disk-size 200 \
+  --zones $ZONE_ID \
+  --image $DOCKER_GENOMICS \
+  --logging $LOG \
+  --command 'samtools view -o \
+    $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.sam \
+    $(dirname "${BAM_BAI}")/${SAMPLE}_chr${CHR}_recal.bam
+'
+
+
 
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env SAM" > sam_to_bq.tsv
