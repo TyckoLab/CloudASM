@@ -3,7 +3,7 @@
 # Launch the query and save into a temporary table
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_reads_tmp_${CHR} \
+    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_reads_tmp_chr${CHR}_${INF}_${SUP} \
     --replace=true \
     " WITH
         sequences AS (
@@ -21,6 +21,8 @@ bq query \
             ${DATASET_ID}.${SAMPLE}_recal_sam
           WHERE
             chr = '${CHR}'
+            AND read_start >= ${INF}
+            AND read_end <= ${SUP}
         ),
        variants AS (
         SELECT 
@@ -35,6 +37,8 @@ bq query \
           ${DATASET_ID}.${SAMPLE}_vcf
         WHERE 
             chr = '${CHR}'
+            AND pos >= ${INF}
+            AND pos <= ${SUP}
       ),
       VARIANTS_SEQUENCES AS (
         SELECT * FROM variants

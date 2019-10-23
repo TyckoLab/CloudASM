@@ -114,12 +114,35 @@ while read SAMPLE ; do
     echo -e "${SAMPLE}" >> all_samples.tsv
 done < sample_id.txt
 
+# Create a file with the number of nucleotides per chromosome.
+echo -e "1\t249250621" > chr.txt && echo -e "2\t243199373" >> chr.txt && echo -e "3\t198022430" >> chr.txt \
+&& echo -e "4\t191154276" >> chr.txt && echo -e "5\t180915260" >> chr.txt && echo -e "6\t171115067" >> chr.txt \
+&& echo -e "7\t159138663" >> chr.txt && echo -e "8\t146364022" >> chr.txt && echo -e "9\t141213431" >> chr.txt \
+&& echo -e "10\t135534747" >> chr.txt && echo -e "11\t135006516" >> chr.txt && echo -e "12\t133851895" >> chr.txt \
+&& echo -e "13\t115169878" >> chr.txt && echo -e "14\t107349540" >> chr.txt && echo -e "15\t102531392" >> chr.txt \
+&& echo -e "16\t90354753" >> chr.txt && echo -e "17\t81195210" >> chr.txt && echo -e "18\t78077248" >> chr.txt \
+&& echo -e "19\t59128983" >> chr.txt && echo -e "20\t63025520" >> chr.txt && echo -e "21\t48129895" >> chr.txt \
+&& echo -e "22\t51304566" >> chr.txt && echo -e "X\t155270560" >> chr.txt && echo -e "Y\t59373566" >> chr.txt
+
+STEP="50000000"
+
 # Prepare TSV file per chromosome (used for many jobs)
-echo -e "--env SAMPLE\t--env CHR" > all_chr.tsv
+echo -e "--env SAMPLE\t--env CHR\t--env INF\t--env SUP" > all_chr.tsv
 
 while read SAMPLE ; do
   for CHR in `seq 1 22` X Y ; do
-    echo -e "${SAMPLE}\t${CHR}" >> all_chr.tsv
+    echo "Processing the chr" $CHR
+    NUCLEOTIDES_IN_CHR=$(awk -v CHR="${CHR}" -F"\t" '{ if ($1 == CHR) print $2}' chr.txt)
+    INF="1"
+    SUP=$(( $NUCLEOTIDES_IN_CHR<$STEP ? $NUCLEOTIDES_IN_CHR: $STEP ))
+    echo -e "${SAMPLE}\t${CHR}\t$INF\t$SUP" >> all_chr.tsv # for jobs
+    while [ $NUCLEOTIDES_IN_CHR -gt $SUP ] ; do
+      INCREMENT=$(( $NUCLEOTIDES_IN_CHR-$SUP<$STEP ? $NUCLEOTIDES_IN_CHR-$SUP: $STEP ))
+      INF=$(( ${SUP} + 1 ))
+      SUP=$(( ${SUP} + $INCREMENT ))
+      echo -e "${SAMPLE}\t${CHR}\t$INF\t$SUP" >> all_chr.tsv
+      
+    done
   done
 done < sample_id.txt
 
@@ -698,7 +721,7 @@ dsub \
                  sleep 1s \
                  && bq cp \
                     --append_table \
-                    ${DATASET_ID}.${SAMPLE}_vcf_reads_tmp_${CHR} \
+                    ${DATASET_ID}.${SAMPLE}_vcf_reads_tmp_chr${CHR} \
                     ${DATASET_ID}.${SAMPLE}_vcf_reads \
                     && bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_reads_tmp_${CHR}
                done' \
