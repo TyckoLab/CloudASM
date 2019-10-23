@@ -24,31 +24,6 @@ CONSECUTIVE_CPG="2"
 # Minimum reading score of the SNP
 SNP_SCORE="33" # In ASCII, 63 correponds to a quality score of 30. See this table: https://www.drive5.com/usearch/manual/quality_score.html
 
-# Number of nucleotides in each human chromosome (do not change, except if you do not use human samples)
-1,249250621
-2,243199373
-3,198022430
-4,191154276
-5,180915260
-6,171115067
-7,159138663
-8,146364022
-9,141213431
-10,135534747
-11,135006516
-12,133851895
-13,115169878
-14	107349540
-15	102531392
-16	90354753
-17	81195210
-18	78077248
-19	59128983
-20	63025520
-21	48129895
-22	51304566
-X	155270560
-Y	59373566
 
 ########################## GCP variables (to be customized) ################################
 
@@ -124,11 +99,13 @@ echo -e "1\t249250621" > chr.txt && echo -e "2\t243199373" >> chr.txt && echo -e
 && echo -e "19\t59128983" >> chr.txt && echo -e "20\t63025520" >> chr.txt && echo -e "21\t48129895" >> chr.txt \
 && echo -e "22\t51304566" >> chr.txt && echo -e "X\t155270560" >> chr.txt && echo -e "Y\t59373566" >> chr.txt
 
+# The number of nucleotides to be considered in a window when searching SNPs and their reads.
 STEP="50000000"
 
 # Prepare TSV file per chromosome (used for many jobs)
 echo -e "--env SAMPLE\t--env CHR\t--env INF\t--env SUP" > all_chr.tsv
 
+# Create a file of job parameters for finding SNPs and their reads.
 while read SAMPLE ; do
   for CHR in `seq 1 22` X Y ; do
     echo "Processing the chr" $CHR
@@ -717,19 +694,17 @@ dsub \
   --env DATASET_ID="${DATASET_ID}" \
   --env PROJECT_ID="${PROJECT_ID}" \
   --command 'bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_reads \
-            && for CHR in `seq 1 22` X Y ; do 
-                 sleep 1s \
-                 && bq cp \
-                    --append_table \
-                    ${DATASET_ID}.${SAMPLE}_vcf_reads_tmp_chr${CHR} \
-                    ${DATASET_ID}.${SAMPLE}_vcf_reads \
-                    && bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_reads_tmp_${CHR}
-               done' \
+            && bq query --use_legacy_sql=false --format=csv \
+                "SELECT table_name FROM wgbs_encode.INFORMATION_SCHEMA.TABLES WHERE table_name LIKE \"%_chr1_%\" " \
+                | grep -v "table_name" > list.txt \
+            && while IFS=, read -r col1 ; do # Loop over the CSV file
+                 bq cp --append_table ${DATASET_ID}.$col1 ${DATASET_ID}.${SAMPLE}_vcf_reads
+                 sleep 1s    
+                 bq rm -f -t ${DATASET_ID}.$col1 # delete the file from Big Query
+               done < list.txt ' \
   --tasks all_samples.tsv \
   --name 'app-vcf-reads' \
   --wait
-
-
 
 ########################## Tag each read with REF or ALT and then
 ########################## each pair of SNP and CpG     ##################
