@@ -216,8 +216,6 @@ bq query \
                 cpg
             FROM SNP_METHYL_JOIN
         )
-        -- Before, we would remove DMR with effects less than DMR_EFFECT but we'll remove them
-        -- in summary.sh
         SELECT * FROM SNP_METHYL 
     "
 

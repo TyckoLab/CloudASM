@@ -598,6 +598,9 @@ dsub \
 
 ########################## Prepare SNP database to destroy CpGs ################################
 
+# If you select common snps, it takes 
+3:11pm
+
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -611,6 +614,7 @@ dsub \
   --env OUTPUT_B="${OUTPUT_B}" \
   --env SNPS_FOR_CPG="${SNPS_FOR_CPG}" \
   --env SNP_FREQ="${SNP_FREQ}" \
+  --env GENOME="${GENOME}" \
   --script ${SCRIPTS}/snps_for_cpg.sh \
   --tasks all_samples.tsv \
   --wait

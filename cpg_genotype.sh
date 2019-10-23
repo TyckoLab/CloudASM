@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# We remove all CpGs where the C or G overlap with a SNP found in the "raw" Bis-SNP database
-# 60 seconds for 2 chromosomes
-# That excludes about 5% of all CGs.
-
 bq query \
     --use_legacy_sql=false \
     --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_context_filtered \

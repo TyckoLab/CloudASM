@@ -9,11 +9,10 @@ if [ "${SNPS_FOR_CPG}" = "common_snp" ]; then
     if [ "${GENOME}" = "hg19" ]; then
         COMMON_URL="http://hgdownload.soe.ucsc.edu/goldenPath/hg19/database/snp151Common.txt.gz"
     else 
-        echo "Downloading the common SNPs for GRCh38"
         COMMON_URL="http://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/snp151Common.txt.gz"
     fi
 
-    # Download the common snps
+    echo "Downloading the common snps" $COMMON_URL
     wget $COMMON_URL
 
     # Unzip the file
@@ -29,7 +28,7 @@ if [ "${SNPS_FOR_CPG}" = "common_snp" ]; then
         --field_delimiter "\t" \
         ${DATASET_ID}.${SAMPLE}_snps_for_cpg_raw \
         gs://$OUTPUT_B/$SAMPLE/"snps_for_cpg"/$(basename "${COMMON_URL%.gz}") \
-        bin:INTEGER,chr:STRING,pos:INTEGER,pos_sup:INTEGER,snp_id:STRING,score:INTEGER,strand:STRING,refNCBI:STRING,refUCSC:STRING,observed:STRING,molType:STRING,class:STRING,valid:STRING,avHet:FLOAT,avHetSE:FLOAT,func:STRING,locType:STRING,weight:INTEGER,exceptions:STRING,submitterCount:INTEGER,submitters:STRING,alleleFreqCount:INTEGER,alleles:STRING,alleleNs:STRING,alleleFreqs:STRING,bitfields:STRING
+        bin:INTEGER,chr:STRING,pos_inf:INTEGER,pos:INTEGER,snp_id:STRING,score:INTEGER,strand:STRING,refNCBI:STRING,refUCSC:STRING,observed:STRING,molType:STRING,class:STRING,valid:STRING,avHet:FLOAT,avHetSE:FLOAT,func:STRING,locType:STRING,weight:INTEGER,exceptions:STRING,submitterCount:INTEGER,submitters:STRING,alleleFreqCount:INTEGER,alleles:STRING,alleleNs:STRING,alleleFreqs:STRING,bitfields:STRING
 
 
     # Clean the database of common snps
