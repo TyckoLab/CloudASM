@@ -527,29 +527,42 @@ dsub \
 
 ########################## Export recal bam to Big Query, clean, and delete from bucket ################################
 
+## First convert the BAM into SAM
+
+# Prepare TSV file
+echo -e "--input BAM\t--output SAM" > bam_to_sam.tsv
+
+while read SAMPLE ; do
+  for CHR in `seq 1 22` X Y ; do 
+    echo -e "gs://$OUTPUT_B/${SAMPLE}/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.bam\tgs://$OUTPUT_B/${SAMPLE}/sam/${SAMPLE}_chr${CHR}_recal.sam" >> bam_to_sam.tsv
+  done
+done < sample_id.txt
+
 
 # Create a SAM in the bucket
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
+  --preemptible \
   --machine-type n1-standard-2 \
   --disk-size 200 \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
   --logging $LOG \
-  --command 'samtools view -o \
-    $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.sam \
-    $(dirname "${BAM_BAI}")/${SAMPLE}_chr${CHR}_recal.bam
-'
+  --command 'samtools view -o $SAM $BAM' \
+  --tasks bam_to_sam.tsv \
+  --name 'bam-to-sam' \
+  --wait
 
 
+## Second export SAM to BigQuery and delete it from the bucket (takes too much space)
 
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env SAM" > sam_to_bq.tsv
 
 while read SAMPLE ; do
   for CHR in `seq 1 22` X Y ; do 
-    echo -e "$SAMPLE\tgs://$OUTPUT_B/${SAMPLE}/variants_per_chr/${SAMPLE}_chr${CHR}_recal.sam" >> sam_to_bq.tsv
+    echo -e "$SAMPLE\tgs://$OUTPUT_B/${SAMPLE}/sam/${SAMPLE}_chr${CHR}_recal.sam" >> sam_to_bq.tsv
   done
   
   # Delete existing SAM on big query
@@ -682,7 +695,7 @@ while read SAMPLE ; do
   bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_reads  
 done < sample_id.txt
 
-#3hours for the largest chromosomes
+#30 min for the largest chromosomes
 # Create one file per chromosome
 dsub \
   --provider google-v2 \
