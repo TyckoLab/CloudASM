@@ -819,10 +819,6 @@ while read SAMPLE ; do
     echo -e "gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_snp_for_dmr.json\tgs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_dmr_pvalue.json" >> dmr.tsv
 done < sample_id.txt
 
-# Requesting 
-# 1/ at least CPG_PER_DMR CpGs
-# 2/ a DMR_EFFECT difference between the REF and ALT (computed across reads) across CpGs that are located in between the two extreme significant CpGs
-# Removes ~50% of SNPs.
 # Takes three minute
 dsub \
   --provider google-v2 \
@@ -850,6 +846,8 @@ dsub \
   --machine-type n1-standard-4 \
   --image ${DOCKER_PYTHON} \
   --logging $LOG \
+  --env P_VALUE="${P_VALUE}" \
+  --env BH_THRESHOLD="${BH_THRESHOLD}" \
   --script ${SCRIPTS}/dmr.py \
   --tasks dmr.tsv \
   --wait

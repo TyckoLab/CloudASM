@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import ndjson
 from pandas.io.json import json_normalize
-
+import statsmodels.stats.multitest as mt
 
 
 # The schema of the cpg genotype file is the following and the header is included
@@ -25,7 +25,8 @@ from pandas.io.json import json_normalize
 
 INPUT_FILE = os.environ['DMR']
 OUTPUT_FILE = os.environ['DMR_PVALUE']
-
+P_VALUE = float(os.environ['P_VALUE'])
+BH_THRESHOLD = float(os.environ['BH_THRESHOLD'])
 
 # load from file-like objects
 with open(INPUT_FILE) as f:
@@ -46,9 +47,13 @@ def wilcoxon_pvalue(row):
     except ValueError:
         return 1
 
-
 # Create a column with the p-value
 df['wilcoxon_pvalue'] = df.apply(wilcoxon_pvalue, axis = 1)
+
+
+################################## Calculate p-value corrected for multiple testing using Benjamini–Hochberg
+
+df['wilcoxon_corr_pvalue'] = mt.multipletests(df['wilcoxon_pvalue'], alpha = BH_THRESHOLD, method = 'fdr_bh')[1]
 
 ################################## Calculate number of significant consecutive CpGs in the same direction.
 
@@ -58,14 +63,17 @@ def consecutive_cpg(row):
       found = 0
       for index, row in flat_cpg.iterrows():
           if index > 0:
-              if flat_cpg.iloc[index-1].fisher_pvalue < 0.05 and row.fisher_pvalue < 0.05 and np.sign(flat_cpg.iloc[index-1].effect) == np.sign(row.effect):
-                  found = found + 1
+              if flat_cpg.iloc[index-1].fisher_pvalue < P_VALUE and row.fisher_pvalue < P_VALUE and np.sign(flat_cpg.iloc[index-1].effect) == np.sign(row.effect):
+                  if found == 0:
+                      found = 2 
+                  else:
+                      found = found + 1
       return found
   else:
       return 0
 
 # Create a column with the number of consecutive CpGs that have significant ASM in the same direction
-df['nb_consecutive_asm'] = df.apply(consecutive_cpg, axis = 1)
+df['nb_consec_asm'] = df.apply(consecutive_cpg, axis = 1)
 
 ################################## Save file in JSON format
 

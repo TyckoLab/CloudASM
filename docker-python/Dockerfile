@@ -1,15 +1,10 @@
-FROM python:3
+FROM python:3.7.5
 
 ## To create the image on Cloud Build: 
 ## gcloud builds submit --tag gcr.io/hackensack-tyco/python
 
-# Pandas to import CSV files as dataframe
-RUN pip install pandas
+# Pandas to import CSV files as dataframe, statistics for Fisher test, dataframe manipulation,  statistics (multiple testing), and JSON manipulation
+RUN pip install numpy pandas scipy statsmodels ndjson
 
-# Statistics module for Python
-RUN pip install scipy
-
-# JSON module
-RUN pip install ndjson
 
 CMD ["date"]
