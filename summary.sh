@@ -36,7 +36,7 @@ bq query \
         nb_consecutive_asm
     FROM ${DATASET_ID}.${SAMPLE}_dmr_pvalue
     WHERE 
-        wilcoxon_pvalue < 0.05 
+        wilcoxon_pvalue < ${P_VALUE}
         AND ABS(effect) > ${DMR_EFFECT}
         AND (pos_sig_cpg >= ${CPG_PER_DMR}
                 OR neg_sig_cpg >= ${CPG_PER_DMR})

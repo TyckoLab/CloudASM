@@ -24,6 +24,11 @@ CONSECUTIVE_CPG="2"
 # Minimum reading score of the SNP
 SNP_SCORE="33" # In ASCII, 63 correponds to a quality score of 30. See this table: https://www.drive5.com/usearch/manual/quality_score.html
 
+# Benjamin-Hochberg threshold
+BH_THRESHOLD="0.05"
+
+# p-value cut-off used in single-CpG ASM (Fisher test) and DMR ASM (Wilcoxon test)
+P_VALUE="0.05"
 
 ########################## GCP variables (to be customized) ################################
 
@@ -828,6 +833,7 @@ dsub \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
   --env CPG_PER_DMR="${CPG_PER_DMR}" \
+  --env P_VALUE="${P_VALUE}" \
   --script ${SCRIPTS}/dmr.sh \
   --tasks all_samples.tsv \
   --wait
@@ -862,6 +868,7 @@ dsub \
   --env OUTPUT_B="${OUTPUT_B}" \
   --env DMR_EFFECT="${DMR_EFFECT}" \
   --env CPG_PER_DMR="${CPG_PER_DMR}" \
+  --env P_VALUE="${P_VALUE}" \
   --script ${SCRIPTS}/summary.sh \
   --tasks all_samples.tsv \
   --wait
