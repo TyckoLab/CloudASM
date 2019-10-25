@@ -53,7 +53,7 @@ df['wilcoxon_pvalue'] = df.apply(wilcoxon_pvalue, axis = 1)
 
 ################################## Calculate p-value corrected for multiple testing using Benjamini–Hochberg
 
-df['wilcoxon_corr_pvalue'] = mt.multipletests(df['wilcoxon_pvalue'], alpha = BH_THRESHOLD, method = 'fdr_bh')[1]
+df['wilcoxon_corr_pvalue'] = round(mt.multipletests(df['wilcoxon_pvalue'], alpha = BH_THRESHOLD, method = 'fdr_bh')[1],5)
 
 ################################## Calculate number of significant consecutive CpGs in the same direction.
 

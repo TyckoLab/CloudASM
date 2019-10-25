@@ -49,8 +49,10 @@ bq query \
                 (SELECT COUNT(fisher_pvalue) FROM UNNEST(cpg) WHERE fisher_pvalue < ${P_VALUE}) AS nb_sig_cpg, 
                 (SELECT COUNT(fisher_pvalue) FROM UNNEST(cpg) WHERE fisher_pvalue < ${P_VALUE} AND SIGN(effect) = 1) AS pos_sig_cpg,
                 (SELECT COUNT(fisher_pvalue) FROM UNNEST(cpg) WHERE fisher_pvalue < ${P_VALUE} AND SIGN(effect) = -1) AS neg_sig_cpg, 
-                (SELECT MIN(pos) FROM UNNEST(cpg) WHERE fisher_pvalue < ${P_VALUE}) AS min_cpg,
-                (SELECT MAX(pos) FROM UNNEST(cpg) WHERE fisher_pvalue < ${P_VALUE}) AS max_cpg,
+                (SELECT MIN(pos) FROM UNNEST(cpg) WHERE fisher_pvalue < ${P_VALUE}) AS min_sig_cpg,
+                (SELECT MAX(pos) FROM UNNEST(cpg) WHERE fisher_pvalue < ${P_VALUE}) AS max_sig_cpg,
+                (SELECT MIN(pos) FROM UNNEST(cpg)) AS min_cpg,
+                (SELECT MAX(pos) FROM UNNEST(cpg)) AS max_cpg,
                 cpg
             FROM SNP_CPG_ARRAY
         )
@@ -64,8 +66,6 @@ bq query \
     --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_snp_for_dmr \
     --replace=true \
     "
-        -- Select SNPs where there are at least 3 significant CpGs in the same direction
-        -- At this point, we're left with 2% of SNPs.
     WITH    
         HET_SNP AS (
             SELECT * FROM ${DATASET_ID}.${SAMPLE}_het_snp
@@ -77,6 +77,8 @@ bq query \
                 chr AS chr_dmr,
                 min_cpg,
                 max_cpg,
+                min_sig_cpg,
+                max_sig_cpg,
                 nb_cpg,
                 nb_sig_cpg,
                 pos_sig_cpg,
@@ -84,7 +86,6 @@ bq query \
                 cpg
             FROM HET_SNP
             -- To have boundaries in the DMR made of significant CpGs, we need at least 2 of them.
-            WHERE nb_sig_cpg >= 2 
         ),
         -- Import the list of CpGs with their respective snp_id, read_id, and allele
         ALL_CPG AS (
@@ -138,6 +139,8 @@ bq query \
                 snp_id_cpg AS snp_id, 
                 min_cpg,
                 max_cpg,
+                min_sig_cpg,
+                max_sig_cpg,
                 allele, 
                 read_id,
                 nb_cpg,

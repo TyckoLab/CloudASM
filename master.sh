@@ -867,6 +867,7 @@ dsub \
   --env DMR_EFFECT="${DMR_EFFECT}" \
   --env CPG_PER_DMR="${CPG_PER_DMR}" \
   --env P_VALUE="${P_VALUE}" \
+  --env CONSECUTIVE_CPG="${CONSECUTIVE_CPG}" \
   --script ${SCRIPTS}/summary.sh \
   --tasks all_samples.tsv \
   --wait

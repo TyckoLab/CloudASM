@@ -40,6 +40,6 @@ bq query \
         AND ABS(effect) > ${DMR_EFFECT}
         AND (pos_sig_cpg >= ${CPG_PER_DMR}
                 OR neg_sig_cpg >= ${CPG_PER_DMR})
-        AND nb_consec_asm > 1
+        AND nb_consec_asm >= ${CONSECUTIVE_CPG}
     "
 
