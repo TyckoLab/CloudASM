@@ -128,7 +128,8 @@ bq query \
             INNER JOIN FILTERED_CPG_CLEAN
             ON snp_id_cpg = snp_id_dmr AND chr_cpg = chr_dmr
         ),
-        QUALIFYING_CPG AS (
+        -- we take all CpGs across the DMR
+        QUALIFYING_CPG_WILCOX AS (
         -- All CpGs that are located within the boundaries of the potential DMR
         -- This removes 1/3 of all CpGs.
             SELECT 
@@ -154,8 +155,35 @@ bq query \
                 pos_cpg >= min_cpg 
                 AND pos_cpg <= max_cpg
         ),
+        -- we now take the CpGs thare within the boundaries set by significant CpGs
+        QUALIFYING_CPG_DMR_EFFECT AS (
+        -- All CpGs that are located within the boundaries of the potential DMR
+        -- This removes 1/3 of all CpGs.
+            SELECT 
+                chr_cpg, 
+                pos_cpg, 
+                meth, 
+                cov, 
+                snp_id_cpg AS snp_id, 
+                min_cpg,
+                max_cpg,
+                min_sig_cpg,
+                max_sig_cpg,
+                allele, 
+                read_id,
+                nb_cpg,
+                nb_sig_cpg,
+                pos_sig_cpg,
+                neg_sig_cpg,
+                cpg
+            FROM CPG_DMR
+            -- Many snps from HET SNPs do not have lower or upper bound.
+            WHERE 
+                pos_cpg >= min_sig_cpg 
+                AND pos_cpg <= max_sig_cpg
+        ),
         -- Compute the methylation % per read_id, per snp_id
-        METHYL_PER_READ AS (
+        METHYL_PER_READ_WILCOX AS (
             SELECT 
                 snp_id,
                 chr_cpg,
@@ -163,45 +191,62 @@ bq query \
                 MAX(max_sig_cpg) AS dmr_sup,
                 read_id,
                 allele,
-                ROUND(SAFE_DIVIDE(SUM(meth),SUM(cov)),5) AS methyl,
+                ROUND(SAFE_DIVIDE(SUM(meth),SUM(cov)),5) AS methyl_for_wilcox,
                 ANY_VALUE(nb_cpg) AS nb_cpg,
                 ANY_VALUE(nb_sig_cpg) AS nb_sig_cpg,
                 ANY_VALUE(pos_sig_cpg) AS pos_sig_cpg,
                 ANY_VALUE(neg_sig_cpg) AS neg_sig_cpg,
                 ANY_VALUE(cpg) AS cpg
-            FROM QUALIFYING_CPG
+            FROM QUALIFYING_CPG_WILCOX
             GROUP BY snp_id, read_id, allele, chr_cpg
         ),
-        SNP_METHYL_ARRAY_REF AS (
+        METHYL_PER_READ_FOR_EFFECT AS (
+            SELECT 
+                snp_id,
+                chr_cpg,
+                MIN(min_sig_cpg) AS dmr_inf,
+                MAX(max_sig_cpg) AS dmr_sup,
+                read_id,
+                allele,
+                ROUND(SAFE_DIVIDE(SUM(meth),SUM(cov)),5) AS methyl_for_effect,
+                ANY_VALUE(nb_cpg) AS nb_cpg,
+                ANY_VALUE(nb_sig_cpg) AS nb_sig_cpg,
+                ANY_VALUE(pos_sig_cpg) AS pos_sig_cpg,
+                ANY_VALUE(neg_sig_cpg) AS neg_sig_cpg,
+                ANY_VALUE(cpg) AS cpg
+            FROM QUALIFYING_CPG_DMR_EFFECT
+            GROUP BY snp_id, read_id, allele, chr_cpg
+        ),
+        SNP_METHYL_ARRAY_REF_WILCOX AS (
             SELECT
                 snp_id,
                 ANY_VALUE(chr_cpg) AS chr,
                 ANY_VALUE(dmr_inf) AS dmr_inf,
                 ANY_VALUE(dmr_sup) AS dmr_sup,
-                ARRAY_AGG(STRUCT(methyl)) AS ref,
+                ARRAY_AGG(STRUCT(methyl_for_wilcox)) AS ref,
                 ANY_VALUE(nb_cpg) AS nb_cpg,
                 ANY_VALUE(nb_sig_cpg) AS nb_sig_cpg,
                 ANY_VALUE(pos_sig_cpg) AS pos_sig_cpg,
                 ANY_VALUE(neg_sig_cpg) AS neg_sig_cpg,
                 ANY_VALUE(cpg) AS cpg
-            FROM METHYL_PER_READ
+            FROM METHYL_PER_READ_WILCOX
             WHERE allele = 'REF'
             GROUP BY snp_id
         ),
-        SNP_METHYL_ARRAY_ALT AS (
+        SNP_METHYL_ARRAY_ALT_WILCOX AS (
             SELECT
                 snp_id AS snp_id_alt,
-                ARRAY_AGG(STRUCT(methyl)) AS alt
-            FROM METHYL_PER_READ
+                ARRAY_AGG(STRUCT(methyl_for_wilcox)) AS alt
+            FROM METHYL_PER_READ_WILCOX
             WHERE allele = 'ALT'
             GROUP BY snp_id
         ),
-        SNP_METHYL_JOIN AS (
-            SELECT * FROM SNP_METHYL_ARRAY_REF
-            INNER JOIN SNP_METHYL_ARRAY_ALT
+        SNP_METHYL_JOIN_WILCOX AS (
+            SELECT * FROM SNP_METHYL_ARRAY_REF_WILCOX
+            INNER JOIN SNP_METHYL_ARRAY_ALT_WILCOX
             ON snp_id = snp_id_alt
         ),
-        SNP_METHYL AS (
+        SNP_METHYL_WILCOX AS (
             SELECT 
                 snp_id, 
                 chr,
@@ -209,7 +254,6 @@ bq query \
                 dmr_sup,
                 ARRAY_LENGTH(ref) AS ref_reads, 
                 ARRAY_LENGTH(alt) AS alt_reads,
-                 ROUND(((SELECT AVG(methyl) FROM UNNEST(alt)) - (SELECT AVG(methyl) FROM UNNEST(ref))),3) AS effect,
                 ref, 
                 alt,
                 nb_cpg,
