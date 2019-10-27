@@ -159,8 +159,8 @@ bq query \
             SELECT 
                 snp_id,
                 chr_cpg,
-                ANY_VALUE(min_cpg) AS dmr_inf,
-                ANY_VALUE(max_cpg) AS dmr_sup,
+                MIN(min_sig_cpg) AS dmr_inf,
+                MAX(max_sig_cpg) AS dmr_sup,
                 read_id,
                 allele,
                 ROUND(SAFE_DIVIDE(SUM(meth),SUM(cov)),5) AS methyl,
