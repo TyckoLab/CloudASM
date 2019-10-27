@@ -53,17 +53,35 @@ df['wilcoxon_pvalue'] = df.apply(wilcoxon_pvalue, axis = 1)
 
 ################################## Calculate p-value corrected for multiple testing using Benjamini–Hochberg
 
-df['wilcoxon_corr_pvalue'] = round(mt.multipletests(df['wilcoxon_pvalue'], alpha = BH_THRESHOLD, method = 'fdr_bh')[1],5)
+df['wilcoxon_corr_pvalue'] = mt.multipletests(df['wilcoxon_pvalue'], alpha = BH_THRESHOLD, method = 'fdr_bh')[1]
+df['wilcoxon_corr_pvalue'] = df['wilcoxon_corr_pvalue'].round(5)
 
 ################################## Calculate number of significant consecutive CpGs in the same direction.
 
-def consecutive_cpg(row):
+# Find consecutive significant ASM CpGs that are positive
+def consecutive_pos_cpg(row):
   if int(row['nb_sig_cpg']) > 1 :
       flat_cpg = json_normalize(row['cpg'])
       found = 0
       for index, row in flat_cpg.iterrows():
           if index > 0:
-              if flat_cpg.iloc[index-1].fisher_pvalue < P_VALUE and row.fisher_pvalue < P_VALUE and np.sign(flat_cpg.iloc[index-1].effect) == np.sign(row.effect):
+              if flat_cpg.iloc[index-1].fisher_pvalue < P_VALUE and row.fisher_pvalue < P_VALUE and np.sign(flat_cpg.iloc[index-1].effect) == 1 and np.sign(row.effect) ==1 :
+                  if found == 0:
+                      found = 2 
+                  else:
+                      found = found + 1
+      return found
+  else:
+      return 0
+
+# Find consecutive significant ASM CpGs that are negative
+def consecutive_neg_cpg(row):
+  if int(row['nb_sig_cpg']) > 1 :
+      flat_cpg = json_normalize(row['cpg'])
+      found = 0
+      for index, row in flat_cpg.iterrows():
+          if index > 0:
+              if flat_cpg.iloc[index-1].fisher_pvalue < P_VALUE and row.fisher_pvalue < P_VALUE and np.sign(flat_cpg.iloc[index-1].effect) == -1 and np.sign(row.effect) == -1 :
                   if found == 0:
                       found = 2 
                   else:
@@ -73,7 +91,12 @@ def consecutive_cpg(row):
       return 0
 
 # Create a column with the number of consecutive CpGs that have significant ASM in the same direction
-df['nb_consec_asm'] = df.apply(consecutive_cpg, axis = 1)
+df['nb_consec_pos_sig_asm'] = df.apply(consecutive_pos_cpg, axis = 1)
+df['nb_consec_neg_sig_asm'] = df.apply(consecutive_neg_cpg, axis = 1)
+
+################################## Calculate DMR "effect" in between significant ASM CpGs
+
+
 
 ################################## Save file in JSON format
 
