@@ -94,10 +94,6 @@ def consecutive_neg_cpg(row):
 df['nb_consec_pos_sig_asm'] = df.apply(consecutive_pos_cpg, axis = 1)
 df['nb_consec_neg_sig_asm'] = df.apply(consecutive_neg_cpg, axis = 1)
 
-################################## Calculate DMR "effect" in between significant ASM CpGs
-
-
-
 ################################## Save file in JSON format
 
 # Save to JSON
