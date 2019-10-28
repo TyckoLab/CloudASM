@@ -41,74 +41,34 @@ bq query \
             AND pos >= ${INF}
             AND pos <= ${SUP}
       ),
-      VARIANTS_SEQUENCES AS (
-        SELECT * FROM variants INNER JOIN sequences 
-        ON
-            sequences.read_start <= pos
-            AND sequences.read_end >= pos
-            AND sequences.sequences_chr = chr
-            AND (sequences.seq_CT_strand = CT_strand OR sequences.seq_GA_strand = GA_strand)
-      ),
-      VARIANTS_AND_OVERLAPPING_READS AS (
+      unique_read_id AS (
         SELECT 
-          snp_id,
-          TRUE AS snp_in_read,
-          chr,
-          pos,
-          ref,
-          alt,
-          read_start,
-          read_end,
-          CT_strand,
-          GA_strand,
-          seq_CT_strand,
-          seq_GA_strand,
-          r_strand,
-          cigar,
-          read_id,
-          seq,
-          score_before_recal
-        FROM VARIANTS_SEQUENCES
-      ), 
-      -- Now we need to recover the reads that do not overlap the variant but sequence the same DNA fragment.
-      -- First identify DNA segments where both reads overlap the variant position
-      READ_ID_WITH_SNP_ON_BOTH_STRANDS AS (
-        SELECT COUNT(r_strand), read_id AS read_id_both_strands
-        FROM VARIANTS_SEQUENCES
-        GROUP BY read_id   
-        HAVING COUNT(r_strand) > 1
+          read_id AS read_id_unique,
+          min(read_start) AS seq_start,
+          max(read_end) AS seq_end,
+          ANY_VALUE(sequences_chr) AS sequences_chr,
+          ANY_VALUE(seq_CT_strand) AS seq_CT_strand,
+          ANY_VALUE(seq_GA_strand) AS seq_GA_strand
+        FROM sequences
+        GROUP BY read_id
       ),
-      -- Then identify (read_id, strand) that do not overlap the variant position but are on 
-      -- a DNA segment overlapping the variant
-      READ_STRANDS_WITH_NO_SNP_BUT_OVERLAPPING_DNA_SEGMENT_WITH_SNP AS (
-        SELECT 
-          snp_id, 
-          FALSE AS snp_in_read,
-          chr,
-          pos,
-          ref,
-          alt,
-          CT_strand,
-          GA_strand,
-          read_id AS read_id_to_find, 
-          IF(REGEXP_CONTAINS(r_strand, 'R1'), 'R2', 'R1') AS r_strand_new 
-        FROM VARIANTS_SEQUENCES
-        FULL JOIN READ_ID_WITH_SNP_ON_BOTH_STRANDS
-        ON read_id = read_id_both_strands
-        WHERE read_id_both_strands IS NULL
+      variants_and_read_id AS (
+        SELECT snp_id, pos, read_id_unique, CT_strand, GA_strand FROM variants
+        INNER JOIN unique_read_id
+        ON 
+            seq_start <= pos
+            AND seq_end >= pos
+            AND (seq_CT_strand = CT_strand OR seq_GA_strand = GA_strand)
       ),
-      SEQUENCES_WITHOUT_SNP_BUT_OVERLAPPING_DNA_SEGMENT_WITH_SNP AS (
-        SELECT * FROM READ_STRANDS_WITH_NO_SNP_BUT_OVERLAPPING_DNA_SEGMENT_WITH_SNP
-        INNER JOIN sequences
-        ON read_id_to_find = read_id AND r_strand_new = r_strand
+      variants_and_all_reads AS (
+      SELECT * FROM variants_and_read_id
+      INNER JOIN sequences 
+      ON read_id_unique = read_id
       )
-      SELECT 
+      SELECT
         snp_id,
-        snp_in_read,
-        chr,
         pos,
-        ref,
-        alt,
+        sequences_chr AS chr,
         read_start,
         read_end,
         CT_strand,
@@ -120,28 +80,5 @@ bq query \
         read_id,
         seq,
         score_before_recal
-       FROM VARIANTS_AND_OVERLAPPING_READS
-      UNION ALL
-      SELECT 
-          snp_id,
-          snp_in_read,
-          chr,
-          pos,
-          ref,
-          alt,
-          read_start,
-          read_end,
-          CT_strand,
-          GA_strand,
-          seq_CT_strand,
-          seq_GA_strand,
-          r_strand,
-          cigar,
-          read_id,
-          seq,
-          score_before_recal
-        FROM SEQUENCES_WITHOUT_SNP_BUT_OVERLAPPING_DNA_SEGMENT_WITH_SNP
+      FROM variants_and_all_reads
       "
-
-
-
