@@ -12,6 +12,7 @@ bq query \
             read_start + BYTE_LENGTH(seq) -1 AS read_end,
             IF(REGEXP_CONTAINS(genome_strand, 'CT'), TRUE, FALSE) AS CT_strand,
             IF(REGEXP_CONTAINS(genome_strand, 'GA'), TRUE, FALSE) AS GA_strand,
+            IF(REGEXP_CONTAINS(read_strand, 'CT'), 'R1','R2') AS r_strand,
             cigar,
             seq,
             score_before_recal
