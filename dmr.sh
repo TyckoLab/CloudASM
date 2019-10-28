@@ -233,6 +233,14 @@ bq query \
             WHERE allele = 'REF'
             GROUP BY snp_id
         ),
+        SNP_METHYL_ARRAY_REF_FOR_EFFECT AS (
+            SELECT
+                snp_id,  
+                ARRAY_AGG(STRUCT(methyl_for_effect)) AS ref
+            FROM METHYL_PER_READ_FOR_EFFECT
+            WHERE allele = 'REF'
+            GROUP BY snp_id
+        ),
         SNP_METHYL_ARRAY_ALT_WILCOX AS (
             SELECT
                 snp_id AS snp_id_alt,
@@ -241,10 +249,29 @@ bq query \
             WHERE allele = 'ALT'
             GROUP BY snp_id
         ),
+        SNP_METHYL_ARRAY_ALT_FOR_EFFECT AS (
+            SELECT
+                snp_id AS snp_id_alt,
+                ARRAY_AGG(STRUCT(methyl_for_effect)) AS alt
+            FROM METHYL_PER_READ_FOR_EFFECT
+            WHERE allele = 'ALT'
+            GROUP BY snp_id
+        ),
         SNP_METHYL_JOIN_WILCOX AS (
             SELECT * FROM SNP_METHYL_ARRAY_REF_WILCOX
             INNER JOIN SNP_METHYL_ARRAY_ALT_WILCOX
             ON snp_id = snp_id_alt
+        ),
+        SNP_METHYL_JOIN_FOR_EFFECT AS (
+            SELECT * FROM SNP_METHYL_ARRAY_REF_FOR_EFFECT
+            INNER JOIN SNP_METHYL_ARRAY_ALT_FOR_EFFECT
+            ON snp_id = snp_id_alt
+        ),
+        SNP_METHYL_EFFECT AS (
+            SELECT
+                snp_id AS snp_id_effect,
+                ROUND(((SELECT AVG(methyl_for_effect) FROM UNNEST(alt)) - (SELECT AVG(methyl_for_effect) FROM UNNEST(ref))),3) AS effect
+            FROM SNP_METHYL_JOIN_FOR_EFFECT
         ),
         SNP_METHYL_WILCOX AS (
             SELECT 
@@ -261,9 +288,15 @@ bq query \
                 pos_sig_cpg,
                 neg_sig_cpg,
                 cpg
-            FROM SNP_METHYL_JOIN
+            FROM SNP_METHYL_JOIN_WILCOX
+        ),
+        -- join the DMR effect calculation to the rest of the table
+        DMR_WILCOX AS (
+        SELECT * FROM SNP_METHYL_EFFECT
+        FULL JOIN SNP_METHYL_WILCOX
+        ON snp_id_effect = snp_id
         )
-        SELECT * FROM SNP_METHYL 
+        SELECT * EXCEPT(snp_id_effect) FROM DMR_WILCOX
     "
 
 # Export file to JSON format in the bucket
