@@ -13,6 +13,7 @@ bq query \
     "
     WITH 
         -- transform the vcf_reads table by extracting the CIGAR string
+        -- select only rows where the SNP is actually in the read. The other reads will be tagged later with REF or ALT based on their respective R1/R2
         VCF_reads AS (
             SELECT 
                 snp_id,
@@ -34,6 +35,7 @@ bq query \
                 seq,
                 score_before_recal
             FROM ${DATASET_ID}.${SAMPLE}_vcf_reads
+            WHERE pos >= read_start AND pos <= read_end
         ),
         CIG_NUM AS (
             SELECT 
@@ -186,9 +188,16 @@ bq query \
         SELECT * FROM BOTH_STRANDS WHERE allele != 'bad_snp'
         UNION ALL
         SELECT * FROM ONLY_CT_OR_GA WHERE allele != 'bad_snp'
+    ),
+    -- This filters out the reads where the nucleotide with the SNP has a score below $SNP_SCORE defined in the master script
+    SNPS_WITH_GOOD_QUALITY AS (
+        SELECT DISTINCT * FROM ALL_SNP
+        WHERE SAFE_CAST(TO_CODE_POINTS(snp_score)[offset(0)] AS INT64) >= ${SNP_SCORE}
     )
-    -- This filters out the reads where the nucleotide with the SNP has a score below $SNP_SCORE
-    SELECT DISTINCT * FROM ALL_SNP
-    WHERE SAFE_CAST(TO_CODE_POINTS(snp_score)[offset(0)] AS INT64) >= ${SNP_SCORE}
+    READ_GENOTYPE AS (
+        SELECT read_id, allele
+        FROM SNPS_WITH_GOOD_QUALITY
+
+    )
   "
 
