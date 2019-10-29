@@ -207,7 +207,31 @@ bq query \
         SELECT snp_id, chr, pos, read_id, allele FROM SNP_AND_READ_GENOTYPE
         INNER JOIN VCF_ALL_READS
         ON snp_id_tmp = snp_id AND read_id_tmp = read_id
+    ),
+    -- Need to remove the (snp_id, read_id) combination where the snp_id has been found to be both ref and alt (that can happen with paired reads both overlapping the snp position)
+    GROUP_BY_READID AS (
+        SELECT snp_id AS snp_id_rm, COUNT(DISTINCT allele) AS ambiguity, ANY_VALUE(read_id) AS read_id_rm
+        FROM SNP_AND_ALL_READS
+        GROUP BY read_id, snp_id
+    ),
+    SNP_READ_TO_EXCLUDE AS (
+        SELECT snp_id_rm AS snp_id, read_id_rm AS read_id 
+        FROM GROUP_BY_READID
+        WHERE ambiguity > 1
+    ),
+    SNP_READ_TO_KEEP AS (
+    SELECT snp_id, read_id FROM SNP_AND_ALL_READS
+    EXCEPT DISTINCT
+    SELECT snp_id, read_id FROM SNP_READ_TO_EXCLUDE
+    ),
+    REFORMAT AS (
+    SELECT snp_id AS snp_id_keep, read_id AS read_id_keep 
+    FROM SNP_READ_TO_KEEP
     )
-    SELECT * FROM SNP_AND_ALL_READS
+    SELECT snp_id, chr, pos, read_id, allele FROM REFORMAT 
+    INNER JOIN SNP_AND_ALL_READS
+    ON snp_id = snp_id_keep AND read_id = read_id_keep
   "
+
+
 
