@@ -54,7 +54,7 @@ bq query \
       ),
       -- Find variants on DNA fragments where R1 or R2 has an overlap
       variants_and_read_id AS (
-        SELECT snp_id, pos, read_id_unique, CT_strand, GA_strand 
+        SELECT snp_id, pos, ref, alt, read_id_unique, CT_strand, GA_strand 
         FROM variants
         INNER JOIN unique_read_id
         ON 
@@ -70,6 +70,8 @@ bq query \
       -- Table of all variants x reads where the variant is in the read or its paired read.
       SELECT
         snp_id,
+        ref, 
+        alt,
         pos,
         sequences_chr AS chr,
         read_start,

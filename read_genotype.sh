@@ -14,7 +14,7 @@ bq query \
     WITH 
         -- transform the vcf_reads table by extracting the CIGAR string
         -- select only rows where the SNP is actually in the read. The other reads will be tagged later with REF or ALT based on their respective R1/R2
-        VCF_reads AS (
+        VCF_ALL_READS AS (
             SELECT 
                 snp_id,
                 ref,
@@ -35,14 +35,18 @@ bq query \
                 seq,
                 score_before_recal
             FROM ${DATASET_ID}.${SAMPLE}_vcf_reads
-            WHERE pos >= read_start AND pos <= read_end
+            
+        ),
+        VCF_IN_READS AS (
+            SELECT * FROM VCF_ALL_READS
+            WHERE pos >= read_start AND pos <= read_end 
         ),
         CIG_NUM AS (
             SELECT 
                 -- create a column for the number of letters in the CIGAR string (1, 3, 5, or 7)
                 ARRAY_LENGTH(a_cig_num) AS length_cig,
                 *
-            FROM VCF_READS
+            FROM VCF_IN_READS
         ),
         CIG_NUM_REFINED AS (
             SELECT
@@ -193,11 +197,16 @@ bq query \
     SNPS_WITH_GOOD_QUALITY AS (
         SELECT DISTINCT * FROM ALL_SNP
         WHERE SAFE_CAST(TO_CODE_POINTS(snp_score)[offset(0)] AS INT64) >= ${SNP_SCORE}
-    )
-    READ_GENOTYPE AS (
-        SELECT read_id, allele
+    ),
+    SNP_AND_READ_GENOTYPE AS (
+        SELECT snp_id AS snp_id_tmp, read_id AS read_id_tmp, allele
         FROM SNPS_WITH_GOOD_QUALITY
-
+    ),
+    SNP_AND_ALL_READS AS (
+        SELECT snp_id, chr, pos, read_id, allele FROM SNP_AND_READ_GENOTYPE
+        INNER JOIN VCF_ALL_READS
+        ON snp_id_tmp = snp_id AND read_id_tmp = read_id
     )
+    SELECT * FROM SNP_AND_ALL_READS
   "
 
