@@ -23,9 +23,10 @@ bq query \
                 pos,
                 CT_strand,
                 GA_strand,
+                read_start,
+                read_end,
                 read_id,
                 cigar,
-                read_start,
                 -- we split the CIGAR in 2 arrays, one with letters, one with their corresponding numbers.
                 REGEXP_EXTRACT_ALL(cigar, r'[M|D|I]') AS a_cig_letters, 
                 REGEXP_EXTRACT_ALL(cigar, r'[0-9]+') AS a_cig_num, 
