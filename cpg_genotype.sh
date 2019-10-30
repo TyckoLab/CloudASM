@@ -7,40 +7,49 @@ bq query \
     "
     WITH 
         CONTEXT AS (
-            SELECT * 
+            SELECT 
+                chr,
+                pos,
+                meth,
+                cov,
+                read_id
             FROM ${DATASET_ID}.${SAMPLE}_context
         ),
         SNPS_FOR_CPG AS (
             SELECT 
                 chr_snp, 
-                pos_snp AS pos_snp_c, 
-                pos_snp + 1 AS pos_snp_g
+                pos_snp
             FROM ${DATASET_ID}.${SAMPLE}_snps_for_cpg
         ),
-        CONTEXT_FILTERED_C AS (
-            SELECT distinct chr, pos FROM CONTEXT
-            EXCEPT DISTINCT
-            SELECT distinct chr_snp, pos_snp_c FROM SNPS_FOR_CPG
+        C_FROM_CONTEXT AS (
+            SELECT DISTINCT
+                chr, 
+                pos AS pos_c 
+            FROM CONTEXT
         ),
-        CONTEXT_FILTERED_CG AS (
-            SELECT chr, pos FROM CONTEXT_FILTERED_C
-            EXCEPT DISTINCT
-            SELECT chr_snp, pos_snp_g FROM SNPS_FOR_CPG
+        REMOVE_C AS (
+            SELECT chr, pos_c
+            FROM C_FROM_CONTEXT
+            EXCEPT DISTINCT 
+            SELECT * FROM SNPS_FOR_CPG
         ),
-        FILTERED AS (
-            SELECT chr AS chr_filt, pos AS pos_filt
-            FROM CONTEXT_FILTERED_CG
+        CHANGE_TO_G AS (
+            SELECT 
+                chr AS chr_clean, 
+                pos_c + 1 AS pos_g 
+            FROM REMOVE_C
         ),
-        CONTEXT_FILTERED_READ AS (
-        SELECT * FROM FILTERED
-        INNER JOIN CONTEXT
-        ON chr_filt = chr AND pos = pos_filt
+        REMOVE_C_AND_G AS (
+        SELECT * FROM CHANGE_TO_G
+        EXCEPT DISTINCT
+        SELECT * FROM SNPS_FOR_CPG
         )
-        SELECT chr, pos, meth, cov, read_id FROM CONTEXT_FILTERED_READ
-        --SELECT * FROM SNPS_FOR_CPG
+        SELECT chr, pos, meth, cov, read_id 
+        FROM CONTEXT INNER JOIN REMOVE_C_AND_G
+        ON chr = chr_clean AND pos = pos_g - 1
         "
 
-# Create a table with as many rows as possible for CpG x SNP x read_id
+# Create a long table of all CpG x SNP x read_id combinations
 # 90% of CpGs are dropped because their respective reads could not be linked to a REF or ALT of any SNP
 # This table will be used in the DMR calculation.
 bq query \
