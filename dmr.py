@@ -63,13 +63,19 @@ def consecutive_pos_cpg(row):
   if int(row['nb_sig_cpg']) > 1 :
       flat_cpg = json_normalize(row['cpg'])
       found = 0
+      last_index = 0
       for index, row in flat_cpg.iterrows():
-          if index > 0:
-              if flat_cpg.iloc[index-1].fisher_pvalue < P_VALUE and row.fisher_pvalue < P_VALUE and np.sign(flat_cpg.iloc[index-1].effect) == 1 and np.sign(row.effect) ==1 :
-                  if found == 0:
-                      found = 2 
-                  else:
+          if (index > 0):
+              if (flat_cpg.iloc[index-1].fisher_pvalue < P_VALUE and 
+                  row.fisher_pvalue < P_VALUE and 
+                  np.sign(flat_cpg.iloc[index-1].effect) == 1 and 
+                  np.sign(row.effect) ==1):
+                  if (index == last_index + 1): 
                       found = found + 1
+                      last_index = last_index + 1
+                  else:
+                      found = 2
+                      last_index = index
       return found
   else:
       return 0
@@ -79,13 +85,19 @@ def consecutive_neg_cpg(row):
   if int(row['nb_sig_cpg']) > 1 :
       flat_cpg = json_normalize(row['cpg'])
       found = 0
+      last_index = 0
       for index, row in flat_cpg.iterrows():
-          if index > 0:
-              if flat_cpg.iloc[index-1].fisher_pvalue < P_VALUE and row.fisher_pvalue < P_VALUE and np.sign(flat_cpg.iloc[index-1].effect) == -1 and np.sign(row.effect) == -1 :
-                  if found == 0:
-                      found = 2 
-                  else:
+          if (index > 0):
+              if (flat_cpg.iloc[index-1].fisher_pvalue < P_VALUE and 
+                  row.fisher_pvalue < P_VALUE and 
+                  np.sign(flat_cpg.iloc[index-1].effect) == -1 and 
+                  np.sign(row.effect) == -1):
+                  if (index == last_index + 1): 
                       found = found + 1
+                      last_index = last_index + 1
+                  else:
+                      found = 2
+                      last_index = index
       return found
   else:
       return 0

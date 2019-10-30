@@ -27,7 +27,8 @@ bq query \
         dmr_sup,
         ref_reads AS nb_ref_reads,
         alt_reads AS nb_alt_reads,
-        effect AS effect_size,
+        dmr_effect,
+        wilcoxon_pvalue,
         wilcoxon_corr_pvalue,
         nb_cpg,
         nb_sig_cpg,
@@ -38,10 +39,10 @@ bq query \
     FROM ${DATASET_ID}.${SAMPLE}_dmr_pvalue
     WHERE 
         wilcoxon_corr_pvalue < ${P_VALUE}
-        AND ABS(effect) > ${DMR_EFFECT}
+        AND ABS(dmr_effect) > ${DMR_EFFECT}
         AND (
-            (pos_sig_cpg >= ${CPG_PER_DMR} AND nb_consec_pos_sig_asm >= ${CONSECUTIVE_CPG} AND effect > 0)
-            OR (neg_sig_cpg >= ${CPG_PER_DMR} AND nb_consec_neg_sig_asm >= ${CONSECUTIVE_CPG} AND effect < 0)
+            (pos_sig_cpg >= ${CPG_PER_DMR} AND nb_consec_pos_sig_asm >= ${CONSECUTIVE_CPG} AND dmr_effect > 0)
+            OR (neg_sig_cpg >= ${CPG_PER_DMR} AND nb_consec_neg_sig_asm >= ${CONSECUTIVE_CPG} AND dmr_effect < 0)
             )
     "
 
