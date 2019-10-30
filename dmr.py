@@ -41,7 +41,7 @@ df = json_normalize(data)
 # Function to extract Wilcoxon p-value (5-digit rounding)
 def wilcoxon_pvalue(row):
     try:
-        _, pvalue = stats.mannwhitneyu(json_normalize(row['ref']), json_normalize(row['alt']))
+        _, pvalue = stats.mannwhitneyu(json_normalize(row['ref']), json_normalize(row['alt']), alternative = "two-sided")
         return round(pvalue,5)
     # If the ref and alt datasets are equal or one is included in the other one:
     except ValueError:
