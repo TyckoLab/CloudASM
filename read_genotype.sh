@@ -55,15 +55,15 @@ bq query \
                 IF(length_cig >= 3,
                     SAFE_CAST(a_cig_num[offset(0)] AS INT64) 
                     + SAFE_CAST(a_cig_num[offset(2)] AS INT64)
-                    + IF( a_cig_letters[offset(1)] = 'I', 1, -1)*SAFE_CAST(a_cig_num[offset(1)] AS INT64),
+                    + IF( a_cig_letters[offset(1)] = 'I', -1, 1)*SAFE_CAST(a_cig_num[offset(1)] AS INT64),
                     0)
                     AS second_m,
                 IF(length_cig >= 5,
                             SAFE_CAST(a_cig_num[offset(0)] AS INT64)
                             + SAFE_CAST(a_cig_num[offset(2)] AS INT64)
                             + SAFE_CAST(a_cig_num[offset(4)] AS INT64)
-                            + IF(a_cig_letters[offset(1)] = 'I', 1, - 1) * SAFE_CAST(a_cig_num[offset(1)] AS INT64)
-                            + IF(a_cig_letters[offset(3)] = 'I', 1, -1) * SAFE_CAST(a_cig_num[offset(3)] AS INT64),
+                            + IF(a_cig_letters[offset(1)] = 'I', -1, 1) * SAFE_CAST(a_cig_num[offset(1)] AS INT64)
+                            + IF(a_cig_letters[offset(3)] = 'I', -1, 1) * SAFE_CAST(a_cig_num[offset(3)] AS INT64),
                             0)
                     AS third_m,
             *
@@ -84,8 +84,8 @@ bq query \
         -- second table: the SNP is located after the first deletion or insertion
         SECOND_MATCH AS (
             SELECT 
-            SUBSTR(seq, snp_pos_in_read + IF( a_cig_letters[offset(1)] = 'I', 1, -1)*SAFE_CAST(a_cig_num[offset(1)] AS INT64), 1) as snp_in_read,
-            SUBSTR(score_before_recal, 5+ snp_pos_in_read + IF( a_cig_letters[offset(1)] = 'I', 1, -1)*SAFE_CAST(a_cig_num[offset(1)] AS INT64), 1) as snp_score,
+            SUBSTR(seq, snp_pos_in_read + IF( a_cig_letters[offset(1)] = 'I', -1, 1)*SAFE_CAST(a_cig_num[offset(1)] AS INT64), 1) as snp_in_read,
+            SUBSTR(score_before_recal, 5 + snp_pos_in_read + IF( a_cig_letters[offset(1)] = 'I', -1, 1)*SAFE_CAST(a_cig_num[offset(1)] AS INT64), 1) as snp_score,
             *
             FROM 
                 CIG_NUM_REFINED
@@ -95,8 +95,8 @@ bq query \
         -- third table: the SNP is located after the second deletion or insertion
         THIRD_MATCH AS (
             SELECT
-                SUBSTR(seq, snp_pos_in_read + IF( a_cig_letters[offset(1)] = 'I', 1, -1)*SAFE_CAST(a_cig_num[offset(1)] AS INT64) + IF( a_cig_letters[offset(3)] = 'I', 1, -1)*SAFE_CAST(a_cig_num[offset(3)] AS INT64), 1) as snp_in_read,
-                SUBSTR(score_before_recal, 5+ snp_pos_in_read + IF( a_cig_letters[offset(1)] = 'I', 1, -1)*SAFE_CAST(a_cig_num[offset(1)] AS INT64) + IF( a_cig_letters[offset(3)] = 'I', 1, -1)*SAFE_CAST(a_cig_num[offset(3)] AS INT64), 1) as snp_score,
+                SUBSTR(seq, snp_pos_in_read + IF( a_cig_letters[offset(1)] = 'I', -1, 1)*SAFE_CAST(a_cig_num[offset(1)] AS INT64) + IF( a_cig_letters[offset(3)] = 'I', -1, 1)*SAFE_CAST(a_cig_num[offset(3)] AS INT64), 1) as snp_in_read,
+                SUBSTR(score_before_recal, 5+ snp_pos_in_read + IF( a_cig_letters[offset(1)] = 'I', -1, 1)*SAFE_CAST(a_cig_num[offset(1)] AS INT64) + IF( a_cig_letters[offset(3)] = 'I', -1, 1)*SAFE_CAST(a_cig_num[offset(3)] AS INT64), 1) as snp_score,
                 *
             FROM 
                 CIG_NUM_REFINED
