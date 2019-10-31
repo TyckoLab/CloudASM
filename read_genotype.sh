@@ -227,10 +227,13 @@ bq query \
     REFORMAT AS (
     SELECT snp_id AS snp_id_keep, read_id AS read_id_keep 
     FROM SNP_READ_TO_KEEP
-    )
+    ),
+    FINAL_LIST_WITH_DUPLICATES AS (
     SELECT snp_id, chr, pos, read_id, allele FROM REFORMAT 
     INNER JOIN SNP_AND_ALL_READS
     ON snp_id = snp_id_keep AND read_id = read_id_keep
+    )
+    SELECT DISTINCT * FROM FINAL_LIST_WITH_DUPLICATES
   "
 
 
