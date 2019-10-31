@@ -27,7 +27,6 @@ bq query \
         ref_reads AS nb_ref_reads,
         alt_reads AS nb_alt_reads,
         dmr_effect,
-        wilcoxon_pvalue,
         wilcoxon_corr_pvalue,
         nb_cpg,
         nb_sig_cpg,
@@ -45,3 +44,7 @@ bq query \
             )
     "
 
+bq extract \
+    --destination_format CSV \
+    ${DATASET_ID}.${SAMPLE}_asm_snp \
+    gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_asm.csv
