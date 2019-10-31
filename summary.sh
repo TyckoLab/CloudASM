@@ -8,7 +8,6 @@ bq --location=US load \
                --source_format=NEWLINE_DELIMITED_JSON \
                 ${DATASET_ID}.${SAMPLE}_dmr_pvalue \
                gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_dmr_pvalue.json 
-               
 
 
 # Delete the file generated before computing the p-values.
@@ -41,8 +40,8 @@ bq query \
         wilcoxon_corr_pvalue < ${P_VALUE}
         AND ABS(dmr_effect) > ${DMR_EFFECT}
         AND (
-            (pos_sig_cpg >= ${CPG_PER_DMR} AND nb_consec_pos_sig_asm >= ${CONSECUTIVE_CPG} AND dmr_effect > 0)
-            OR (neg_sig_cpg >= ${CPG_PER_DMR} AND nb_consec_neg_sig_asm >= ${CONSECUTIVE_CPG} AND dmr_effect < 0)
+            (nb_sig_cpg >= ${CPG_PER_DMR} AND nb_consec_pos_sig_asm >= ${CONSECUTIVE_CPG} AND dmr_effect > 0)
+            OR (nb_sig_cpg >= ${CPG_PER_DMR} AND nb_consec_neg_sig_asm >= ${CONSECUTIVE_CPG} AND dmr_effect < 0)
             )
     "
 
