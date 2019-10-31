@@ -58,47 +58,49 @@ df['wilcoxon_corr_pvalue'] = df['wilcoxon_corr_pvalue'].round(5)
 
 ################################## Calculate number of significant consecutive CpGs in the same direction.
 
-# Find consecutive significant ASM CpGs that are positive
-def consecutive_pos_cpg(row):
-  if int(row['nb_sig_cpg']) > 1 :
-      flat_cpg = json_normalize(row['cpg'])
-      found = 0
-      last_index = 0
-      for index, row in flat_cpg.iterrows():
-          if (index > 0):
-              if (flat_cpg.iloc[index-1].fisher_pvalue < P_VALUE and 
-                  row.fisher_pvalue < P_VALUE and 
-                  np.sign(flat_cpg.iloc[index-1].effect) == 1 and 
-                  np.sign(row.effect) ==1):
-                  if (index == last_index + 1): 
-                      found = found + 1
-                      last_index = last_index + 1
-                  else:
-                      found = 2
-                      last_index = index
-      return found
-  else:
-      return 0
-
 # Find consecutive significant ASM CpGs that are negative
 def consecutive_neg_cpg(row):
   if int(row['nb_sig_cpg']) > 1 :
       flat_cpg = json_normalize(row['cpg'])
-      found = 0
-      last_index = 0
+      max_nb_consec = 0
+      current_nb_consec = 0
       for index, row in flat_cpg.iterrows():
           if (index > 0):
               if (flat_cpg.iloc[index-1].fisher_pvalue < P_VALUE and 
                   row.fisher_pvalue < P_VALUE and 
                   np.sign(flat_cpg.iloc[index-1].effect) == -1 and 
                   np.sign(row.effect) == -1):
-                  if (index == last_index + 1): 
-                      found = found + 1
-                      last_index = last_index + 1
+                  if (current_nb_consec == 0): 
+                      current_nb_consec = 2
                   else:
-                      found = 2
-                      last_index = index
-      return found
+                      current_nb_consec = current_nb_consec + 1
+                  max_nb_consec = max(max_nb_consec, current_nb_consec)
+              else: 
+                  current_nb_consec = 0
+      return max_nb_consec
+  else:
+      return 0
+
+# Find consecutive significant ASM CpGs that are negative
+def consecutive_pos_cpg(row):
+  if int(row['nb_sig_cpg']) > 1 :
+      flat_cpg = json_normalize(row['cpg'])
+      max_nb_consec = 0
+      current_nb_consec = 0
+      for index, row in flat_cpg.iterrows():
+          if (index > 0):
+              if (flat_cpg.iloc[index-1].fisher_pvalue < P_VALUE and 
+                  row.fisher_pvalue < P_VALUE and 
+                  np.sign(flat_cpg.iloc[index-1].effect) == 1 and 
+                  np.sign(row.effect) == 1):
+                  if (current_nb_consec == 0): 
+                      current_nb_consec = 2
+                  else:
+                      current_nb_consec = current_nb_consec + 1
+                  max_nb_consec = max(max_nb_consec, current_nb_consec)
+              else: 
+                  current_nb_consec = 0
+      return max_nb_consec
   else:
       return 0
 
