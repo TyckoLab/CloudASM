@@ -1,6 +1,5 @@
 
 # required library
-library(BiocManager)
 library (GenomicRanges)
 
 

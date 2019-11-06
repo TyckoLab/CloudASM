@@ -1,7 +1,7 @@
 FROM bioconductor/release_base2:R3.6.1_Bioc3.9
 # It is a Debian machine
 
-# To create the image on Cloud Build: gcloud builds submit --timeout "1h" --tag gcr.io/hackensack-tyco/onuchic-r
+# To create the image on Cloud Build: gcloud builds submit --timeout "1h" --tag gcr.io/hackensack-tyco/r-genomics
 
 # Update package list
 RUN apt-get update -y 
