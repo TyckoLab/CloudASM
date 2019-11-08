@@ -6,7 +6,7 @@ use Bio::DB::Sam;
 
 # Modify how the variables are defined in the script
 my $bamFile = $ENV{BAM};
-my $refGenome = $ENV{REFGEN};
+my $refGenome = $ENV{REF_GENOME};
 my $cpgPosFile = $ENV{CPGPOS};
 my $hetSnpPosFile = $ENV{SNPS};
 my $outputDir = $ENV{OUTPUT_DIR};

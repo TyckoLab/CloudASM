@@ -4,13 +4,13 @@ use strict;
 use warnings;
 
 # Modify the variables to be compatible with dsub routine
-my $refGenome = $ENV{REFGEN};
+my $refGenome = $ENV{REF_GENOME};
 my $vcfFile = $ENV{VCF};
 my $outputDir = $ENV{OUTPUT_DIR};
 
 my %cpgs;
 
-print STDERR "Reading variants...";
+print STDERR "Reading variants...\n";
 open(VCF,$vcfFile);
 my %vars1;
 my %vars2;
@@ -25,6 +25,7 @@ while(my $line = <VCF>){
     my $chr = $fields[0];
     my $pos = $fields[1];
     my $refAl = $fields[3];
+    #print STDERR "The ref is ${refAl}\n";
     my @altAl;
     if($fields[4] =~ /,/){
 	@altAl = split(",",$fields[4]);
@@ -32,22 +33,28 @@ while(my $line = <VCF>){
     else{
 	push(@altAl,$fields[4]);
     }
-
-    my $otherInfo = $fields[9];
-    my @otherInfo = split(":",$otherInfo);
-    my $gt = $otherInfo[0];
+    #print "@altAl\n";
+    
+    #my $otherInfo = $fields[9];
+    my $gt = $fields[9];
+    #my @otherInfo = split(":",$otherInfo);
+    #my $gt = $otherInfo[0];
     $gt =~ s/0/$refAl/g;
     for(my $i = 1; $i <= @altAl; $i++){
 	$gt =~ s/$i/$altAl[$i-1]/g;
     }
+    #print STDERR "The genotype is ${gt}\n";
 
-    my ($al1,$al2) = split("/",$gt);
+ #   my ($al1,$al2) = split("/",$gt);
+    my ($al1,$al2) = split(/\|/,$gt);
+    #print STDERR " The allele 1 is ${al1} and the allele 2 is ${al2} \n\n";
     push(@{$vars1{$chr}},[$pos,$al1]);
     push(@{$vars2{$chr}},[$pos,$al2]);
     if($al1 ne $al2){
 	my $key = $chr."\t".($pos-1)."\t".$pos;
 	$hetSnps{$key} = [0,$al1,$al2];
     }
+    #print STDERR " The allele 1 is ${al1} and the allele 2 is ${al2} \n\n";
 }
 print STDERR "Done!\n";
 

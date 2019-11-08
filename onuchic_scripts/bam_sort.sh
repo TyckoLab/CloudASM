@@ -14,3 +14,5 @@ java \
     O=${BAM_SORTED} \
     SORT_ORDER=coordinate \
     MAX_RECORDS_IN_RAM=9000000
+
+samtools index ${BAM_SORTED}

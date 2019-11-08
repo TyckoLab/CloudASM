@@ -11,10 +11,12 @@ OUTPUT_B="em-encode-paper" # will be created by the script
 LOG="gs://$OUTPUT_B/logging"
 REF_DATA_B="wgbs-ref-files" # will be created by the script
 GENOME="hg19" 
-REF_GENOME="gs://$REF_DATA_B/$GENOME/ref_genome" # do not modify
 
 SAMPLE="gm12878mod"
 CHR="1"
+
+REF_GENOME="gs://em-encode-paper/gm12878mod/onuchic_ref_genome/human_g1k_v37_chr1.fasta"
+REF_GENOME_INDEX="gs://em-encode-paper/gm12878mod/onuchic_ref_genome/human_g1k_v37_chr1.fasta.fai"
 
 
 # Link non bisulfite-converted VCF for Hg19 for the gm12878 cell line
@@ -30,13 +32,19 @@ dsub \
   --disk-size 200 \
   --machine-type n1-standard-16 \
   --image=$DOCKER_GENOMICS \
-  --input BAM="gs://$OUTPUT_B/gm12878/bam_per_chr/gm12878_chr22.bam" \
-  --output BAM_SORTED="gs://$OUTPUT_B/gm12878mod/onuchic_bam_sorted/gm12878mod_chr22_sorted.bam" \
+  --input BAM="gs://$OUTPUT_B/gm12878/bam_per_chr/gm12878_chr1.bam" \
+  --output BAM_SORTED="gs://$OUTPUT_B/gm12878mod/onuchic_bam_sorted/gm12878mod_chr1_sorted.bam" \
+  --output BAM_INDEX="gs://$OUTPUT_B/gm12878mod/onuchic_bam_sorted/gm12878mod_chr1_sorted.bam.bai" \
   --script $SCRIPTS/bam_sort.sh \
   --wait
 
+
+
+#----------------------------------------------------------------------------------------------------------------------------------
+
 # Generate a list of CpG sites
-# 30 min total. --> 2.66 CPU-hours
+# 10 min total. --> 1 CPU-hours
+# 15h50
 dsub \
   --provider google-v2 \
   --ssh \
@@ -45,13 +53,18 @@ dsub \
   --logging $LOG \
   --image=$DOCKER_PERL \
   --machine-type n1-standard-8 \
-  --boot-disk-size 200 \
-  --disk-size 200 \
+  --boot-disk-size 100 \
+  --disk-size 100 \
   --input VCF="gs://em-encode-paper/gm12878mod/onuchic_vcf/NA12878_chr1_final.vcf" \
-  --input REFGEN="${REF_GENOME}/human_g1k_v37.fasta" \
+  --input REF_GENOME_INDEX="${REF_GENOME_INDEX}" \
+  --input REF_GENOME="${REF_GENOME}" \
   --output-recursive OUTPUT_DIR="gs://$OUTPUT_B/$SAMPLE/onuchic_cpg" \
   --script $SCRIPTS/getCpgPositions.pl \
   --wait
+
+# Download the HetSNp.txt file on a computer. Replace "chr" with nothing
+sed 's|chr||g' hetSnps.txt > hetSnps_nochr.txt 
+# Then, upload to bucket
 
 # Methylation count per CpG
 # Took one hour --> 8 CPU-hours
@@ -68,9 +81,11 @@ dsub \
   --boot-disk-size 200 \
   --disk-size 200 \
   --input BAM="gs://em-encode-paper/gm12878mod/onuchic_bam_sorted/gm12878mod_chr1_rs2319164.bam" \
-  --input REFGEN="${REF_GENOME}/human_g1k_v37.fasta" \
+  --input BAM_INDEX="gs://em-encode-paper/gm12878mod/onuchic_bam_sorted/gm12878mod_chr1_rs2319164.bam.bai" \
+  --input REF_GENOME_INDEX="${REF_GENOME_INDEX}" \
+  --input REF_GENOME="${REF_GENOME}" \
   --input CPGPOS="gs://$OUTPUT_B/$SAMPLE/onuchic_cpg/homoCpGs.txt" \
-  --input SNPS="gs://$OUTPUT_B/$SAMPLE/onuchic_cpg/hetSnps.txt" \
+  --input SNPS="gs://$OUTPUT_B/$SAMPLE/onuchic_cpg/hetSnps_nochr.txt" \
   --script $SCRIPTS/getAllelicMethCounts.pl \
   --wait
 
