@@ -1,7 +1,7 @@
+#!/usr/bin/env RScript
 
 # required library
 library (GenomicRanges)
-
 
 # arguments for input file, name of desired output file, and optionally a desired FDR value threshold
 args = commandArgs(trailingOnly = TRUE)

@@ -19,8 +19,6 @@ ENV PATH="/samtools-0.1.19/:${PATH}"
 WORKDIR /
 
 # Install samtools for Perl
-#RUN cpanm https://cpan.metacpan.org/authors/id/L/LD/LDS/Bio-SamTools-1.42.tar.gz
-
 RUN cpanm Bio::DB::Sam
 
 ##################### INSTALLATION END #####################

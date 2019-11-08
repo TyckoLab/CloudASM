@@ -5,7 +5,7 @@ use warnings;
 use Bio::DB::Sam;
 
 # Modify how the variables are defined in the script
-my $bamFile = $ENV(BAM);
+my $bamFile = $ENV{BAM};
 my $refGenome = $ENV{REFGEN};
 my $cpgPosFile = $ENV{CPGPOS};
 my $hetSnpPosFile = $ENV{SNPS};
