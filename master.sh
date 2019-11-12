@@ -659,7 +659,7 @@ dsub \
   --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
-  --command 'bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_uploaded \
+  --command 'bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_uploaded \
             && for CHR in `seq 1 22` X Y ; do 
                 sleep 1s \
                 && bq --location=US load \
