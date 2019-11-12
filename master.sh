@@ -105,7 +105,7 @@ echo -e "1\t249250621" > chr.txt && echo -e "2\t243199373" >> chr.txt && echo -e
 && echo -e "22\t51304566" >> chr.txt && echo -e "X\t155270560" >> chr.txt && echo -e "Y\t59373566" >> chr.txt
 
 # The number of nucleotides to be considered in a window when searching SNPs and their reads.
-STEP="50000000"
+INTERVAL="50000000"
 
 # Prepare TSV file per chromosome (used for many jobs)
 echo -e "--env SAMPLE\t--env CHR\t--env INF\t--env SUP" > all_chr.tsv
@@ -113,13 +113,12 @@ echo -e "--env SAMPLE\t--env CHR\t--env INF\t--env SUP" > all_chr.tsv
 # Create a file of job parameters for finding SNPs and their reads.
 while read SAMPLE ; do
   for CHR in `seq 1 22` X Y ; do
-    echo "Processing the chr" $CHR
     NUCLEOTIDES_IN_CHR=$(awk -v CHR="${CHR}" -F"\t" '{ if ($1 == CHR) print $2}' chr.txt)
     INF="1"
-    SUP=$(( $NUCLEOTIDES_IN_CHR<$STEP ? $NUCLEOTIDES_IN_CHR: $STEP ))
+    SUP=$(( $NUCLEOTIDES_IN_CHR<$INTERVAL ? $NUCLEOTIDES_IN_CHR: $INTERVAL ))
     echo -e "${SAMPLE}\t${CHR}\t$INF\t$SUP" >> all_chr.tsv # for jobs
     while [ $NUCLEOTIDES_IN_CHR -gt $SUP ] ; do
-      INCREMENT=$(( $NUCLEOTIDES_IN_CHR-$SUP<$STEP ? $NUCLEOTIDES_IN_CHR-$SUP: $STEP ))
+      INCREMENT=$(( $NUCLEOTIDES_IN_CHR-$SUP<$INTERVAL ? $NUCLEOTIDES_IN_CHR-$SUP: $INTERVAL ))
       INF=$(( ${SUP} + 1 ))
       SUP=$(( ${SUP} + $INCREMENT ))
       echo -e "${SAMPLE}\t${CHR}\t$INF\t$SUP" >> all_chr.tsv
@@ -494,7 +493,7 @@ while read SAMPLE ; do
   done
 done < sample_id.txt
 
-# We append all chromosomes in the same file. 
+# Launch job (48 jobs in parallel per sample, completion under 3 minutes)
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -515,6 +514,7 @@ dsub \
   --wait
 
 # Append context files and keep CpGs with 10x coverage min 
+# Less than 15 minutes per sample.
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -524,7 +524,7 @@ dsub \
   --env PROJECT_ID="${PROJECT_ID}" \
   --env DATASET_ID="${DATASET_ID}" \
   --env CPG_COV="${CPG_COV}" \
-  --env OUTPUT_B="$OUTPUT_B" \
+  --env OUTPUT_B="${OUTPUT_B}" \
   --script ${SCRIPTS}/append_context.sh \
   --tasks all_samples.tsv \
   --wait
@@ -625,8 +625,8 @@ dsub \
 
 ########################## Prepare SNP database to destroy CpGs ################################
 
-# If you select common snps, it takes 
-3:11pm
+# This step removes all CpG sites overlapping with a SNP
+# If you select common snps, it takes about 2 minutes
 
 dsub \
   --provider google-v2 \
@@ -649,7 +649,6 @@ dsub \
 
 ########################## Export to BQ and clean the filtered VCF ##################
 
-# Finds out where the SNP can be found with no ambiguity (CT, GA, or both)
 
 # We append all chromosomes files in the same file.
 dsub \
