@@ -48,4 +48,4 @@ bq query \
   "
 
 # Delete VCF file that was uploaded
-bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf
+bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_uploaded
