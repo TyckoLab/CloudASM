@@ -521,7 +521,6 @@ dsub \
   --zones $ZONE_ID \
   --image $DOCKER_GCP \
   --logging $LOG \
-  --env PROJECT_ID="${PROJECT_ID}" \
   --env DATASET_ID="${DATASET_ID}" \
   --env CPG_COV="${CPG_COV}" \
   --env OUTPUT_B="${OUTPUT_B}" \
@@ -559,8 +558,7 @@ dsub \
   --name 'bam-to-sam' \
   --wait
 
-
-## Second export SAM to BigQuery and delete it from the bucket (takes too much space)
+######## Export all SAM to BigQuery
 
 # Prepare TSV file
 echo -e "--env SAMPLE\t--env SAM" > sam_to_bq.tsv
@@ -569,13 +567,12 @@ while read SAMPLE ; do
   for CHR in `seq 1 22` X Y ; do 
     echo -e "$SAMPLE\tgs://$OUTPUT_B/${SAMPLE}/sam/${SAMPLE}_chr${CHR}_recal.sam" >> sam_to_bq.tsv
   done
-  
   # Delete existing SAM on big query
   bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_recal_sam_uploaded
-
 done < sample_id.txt
 
 # We append all chromosomes in the same file.
+# Takes 2 minutes
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -596,6 +593,7 @@ dsub \
   --wait
 
 # Clean the SAM on BigQuery
+# 1 minute
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -603,13 +601,13 @@ dsub \
   --image ${DOCKER_GCP} \
   --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
-  --env PROJECT_ID="${PROJECT_ID}" \
   --script ${SCRIPTS}/clean_sam.sh \
   --tasks all_samples.tsv \
   --wait
 
 # Delete the SAM files from the bucket (they take a lot of space) 
 # and the raw SAM files from Big Query
+# Takes 2 minutes
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -651,6 +649,7 @@ dsub \
 
 
 # We append all chromosomes files in the same file.
+# Takes about 4 minutes
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -684,7 +683,6 @@ dsub \
   --image ${DOCKER_GCP} \
   --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
-  --env PROJECT_ID="${PROJECT_ID}" \
   --script ${SCRIPTS}/clean_vcf.sh \
   --tasks all_samples.tsv \
   --wait

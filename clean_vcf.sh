@@ -5,7 +5,7 @@
 # Remove the rows where the snp_id is not in the form of "rs"
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf \
+    --destination_table ${DATASET_ID}.${SAMPLE}_vcf \
     --replace=true \
     "WITH
       -- We create a file with a 500bp window around the SNP and calculate the cov of the SNP
@@ -46,3 +46,6 @@ bq query \
   FROM
      variants
   "
+
+# Delete VCF file that was uploaded
+bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf

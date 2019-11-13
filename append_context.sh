@@ -7,7 +7,7 @@
 echo "Merge the OB and OT"
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_both_context_tmp \
+    --destination_table ${DATASET_ID}.${SAMPLE}_both_context_tmp \
     --replace=true \
     "WITH 
         OB AS (
@@ -40,7 +40,7 @@ echo "Sum methylation and coverage per CpG. Keep at least 10x cov."
 # We impose a coverage of at least 10x per CpG.
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_merged_context_bed \
+    --destination_table ${DATASET_ID}.${SAMPLE}_merged_context_bed \
     --replace=true \
     "  
     WITH MERGED_STRANDS AS (
@@ -72,7 +72,7 @@ echo "Filter out from both_context_tmp the CpG sites that do not have at least 1
 # This removes about 20% of all CpG flagged by Bismark.
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_context \
+    --destination_table ${DATASET_ID}.${SAMPLE}_context \
     --replace=true \
     " 
     WITH 
@@ -100,7 +100,7 @@ bq query \
 echo "Methylation percentage bedgraph"
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_methyperc_bedgraph \
+    --destination_table ${DATASET_ID}.${SAMPLE}_methyperc_bedgraph \
     --replace=true \
     " SELECT 
         chr, 
@@ -114,7 +114,7 @@ bq query \
 echo "CpG coverage bedgraph"
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_CpGcov_bedgraph \
+    --destination_table ${DATASET_ID}.${SAMPLE}_CpGcov_bedgraph \
     --replace=true \
     " SELECT 
         chr, 
@@ -145,10 +145,10 @@ bq extract \
 ########################## Delete most BQ files
 
 echo "Delete bedgraph files from BQ"
-bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_both_context_tmp
-bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_methyperc_bedgraph
-bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_CpGcov_bedgraph
-bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_merged_context_bed
+bq rm -f -t ${DATASET_ID}.${SAMPLE}_both_context_tmp
+bq rm -f -t ${DATASET_ID}.${SAMPLE}_methyperc_bedgraph
+bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGcov_bedgraph
+bq rm -f -t ${DATASET_ID}.${SAMPLE}_merged_context_bed
 
 echo "Delete raw files"
 bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOB

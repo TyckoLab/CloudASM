@@ -3,7 +3,7 @@
 # Clean the SAM
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_recal_sam \
+    --destination_table ${DATASET_ID}.${SAMPLE}_recal_sam \
     --replace=true \
         "SELECT
             read_id,

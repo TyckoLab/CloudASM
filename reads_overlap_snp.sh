@@ -41,6 +41,7 @@ bq query \
             AND pos >= ${INF}
             AND pos <= ${SUP}
       ),
+      -- Find the lower and upper bounds of a pair of read id (R1 and R2)
       unique_read_id AS (
         SELECT 
           read_id AS read_id_unique,
@@ -55,21 +56,15 @@ bq query \
       -- Find variants on DNA fragments where R1 or R2 has an overlap
       variants_and_read_id AS (
         SELECT snp_id, pos, ref, alt, read_id_unique, CT_strand, GA_strand 
-        FROM variants
-        INNER JOIN unique_read_id
+        FROM unique_read_id
+        INNER JOIN variants
         ON 
             seq_start <= pos
             AND seq_end >= pos
             AND (seq_CT_strand = CT_strand OR seq_GA_strand = GA_strand)
-      ),
-      variants_and_all_reads AS (
-      SELECT * FROM variants_and_read_id
-      INNER JOIN sequences 
-      ON read_id_unique = read_id
       )
       -- Table of all variants x reads where the variant is in the read or its paired read.
-      SELECT
-        snp_id,
+      SELECT snp_id,
         ref, 
         alt,
         pos,
@@ -84,6 +79,7 @@ bq query \
         cigar,
         read_id,
         seq,
-        score_before_recal
-      FROM variants_and_all_reads
-      "
+        score_before_recal 
+      FROM sequences
+      INNER JOIN variants_and_read_id
+      ON read_id_unique = read_id'
