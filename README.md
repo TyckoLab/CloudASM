@@ -20,9 +20,7 @@ Last updated: October 11, 2019. Please check our preprint on [biorxiv](https://w
 
 CloudASM is a turnkey pipeline designed to call allele-specific CpG methylation in whole methylomes. It is designed to run on [Google Cloud Platform](https://cloud.google.com/) (GCP). 
 
-Because it leverages the Google's severless data warehouse, all steps specific to ASM-calling (as opposed to alignment, variant calling, and methylation calling) are about ~500x more efficient in terms of CPU-hours when compared to a traditional server-based approach using a cluster.
-
-This pipeline starts from the zipped fastq files hosted on a bucket and outputs a table on BigQuery of all regions in a sample showing allele-specific methylation. The final table of ASM can be found on BigQuery and will look like this:
+This pipeline takes as an input the zipped fastq files starts from the zipped fastq files hosted on a bucket and outputs a table on BigQuery of all regions in a sample showing allele-specific methylation. The final table of ASM can be found on BigQuery and will look like this:
 
 | chr | snp_id | dmr_inf | dmr_sup | nb_ref_reads | nb_alt_reads | dmr_effect | wilcoxon_corr_pvalue | nb_cpg | pos_sig_cpg | neg_sig_cpg | nb_consec_pos_sig_asm | nb_consec_neg_sig_asm |
 | ------ | ---------- | ------- | ------- | ------------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- |
@@ -33,6 +31,7 @@ This pipeline starts from the zipped fastq files hosted on a bucket and outputs 
 This table can have the same "DMR" overlapping different SNPs.
 
 Here are the explanations of the different parameters on this table:
+
 - `chr`: this this the chromosome number where the SNP and the DMR are located
 - `snp_id`: the unique identifier for the SNP that was
 

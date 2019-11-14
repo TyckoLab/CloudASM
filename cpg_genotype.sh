@@ -77,7 +77,7 @@ bq query \
             ON read_id = geno_read_id
         )
         -- we remove the extra columns and keep distinct rows
-        SELECT DISTINCT
+        SELECT
             chr, 
             pos,
             meth,

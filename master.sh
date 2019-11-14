@@ -723,9 +723,7 @@ dsub \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
   --logging $LOG \
-  --env OUTPUT_B="${OUTPUT_B}" \
   --env DATASET_ID="${DATASET_ID}" \
-  --env PROJECT_ID="${PROJECT_ID}" \
   --env SNP_SCORE="${SNP_SCORE}" \
   --script ${SCRIPTS}/read_genotype.sh \
   --tasks all_samples.tsv \
