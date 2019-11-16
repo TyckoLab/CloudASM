@@ -2,7 +2,7 @@
 
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_context_filtered \
+    --destination_table ${DATASET_ID}.${SAMPLE}_context_filtered \
     --replace=true \
     "
     WITH 
@@ -54,7 +54,7 @@ bq query \
 # This table will be used in the DMR calculation.
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_cpg_read_genotype \
+    --destination_table ${DATASET_ID}.${SAMPLE}_cpg_read_genotype \
     --replace=true \
     "
     WITH 
@@ -69,29 +69,26 @@ bq query \
                 read_id AS geno_read_id,
                 allele
             FROM ${DATASET_ID}.${SAMPLE}_vcf_reads_genotype
-        ),
-        -- create a table with each combination of snp, CpG, read_id, REF, ALT
-        COMBINED AS (
-            SELECT * FROM CONTEXT
-            INNER JOIN GENOTYPE 
-            ON read_id = geno_read_id
         )
-        -- we remove the extra columns and keep distinct rows
-        SELECT
+        -- create a table with each combination of snp, CpG, read_id, REF, ALT
+        SELECT DISTINCT
             chr, 
             pos,
             meth,
             cov,
             snp_id,
+            snp_pos,
             allele,
-            read_id
-        FROM COMBINED
+            read_id 
+        FROM CONTEXT
+        INNER JOIN GENOTYPE 
+        ON read_id = geno_read_id
         "
 
 # This file will be used to compute single CPG ASM
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_cpg_genotype \
+    --destination_table ${DATASET_ID}.${SAMPLE}_cpg_genotype \
     --replace=true \
         "
         WITH 
@@ -106,11 +103,12 @@ bq query \
                 chr,
                 pos,
                 snp_id,
+                snp_pos,
                 SUM(meth) AS ref_meth,
                 SUM(cov) AS ref_cov
             FROM CLEAN
             WHERE allele = 'REF'
-            GROUP BY chr, pos, snp_id
+            GROUP BY chr, pos, snp_id, snp_pos
         ),
         ALT_ALLELES AS (
             SELECT 
@@ -134,6 +132,7 @@ bq query \
                 chr,
                 pos,
                 snp_id,
+                snp_pos,
                 ref_cov,
                 ref_meth,
                 alt_cov,

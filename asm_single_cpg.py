@@ -9,6 +9,7 @@ import pandas as pd
 # chr	STRING
 # pos	INTEGER
 # snp_id	STRING
+# snp_pos INT
 # ref_cov	INTEGER
 # ref_meth	INTEGER
 # alt_cov	INTEGER

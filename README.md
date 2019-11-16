@@ -20,24 +20,36 @@ Last updated: October 11, 2019. Please check our preprint on [biorxiv](https://w
 
 CloudASM is a turnkey pipeline designed to call allele-specific CpG methylation in whole methylomes. It is designed to run on [Google Cloud Platform](https://cloud.google.com/) (GCP). 
 
-This pipeline takes as an input the zipped fastq files starts from the zipped fastq files hosted on a bucket and outputs a table on BigQuery of all regions in a sample showing allele-specific methylation. The final table of ASM can be found on BigQuery and will look like this:
+This pipeline takes as an input  zipped fastq files and outputs a table of all single nucleotide polymorphisms (SNPs) with allele-specific methylation. Below, we show an example of the output table:
 
-| chr | snp_id | dmr_inf | dmr_sup | nb_ref_reads | nb_alt_reads | dmr_effect | wilcoxon_corr_pvalue | nb_cpg | pos_sig_cpg | neg_sig_cpg | nb_consec_pos_sig_asm | nb_consec_neg_sig_asm |
-| ------ | ---------- | ------- | ------- | ------------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- |
-|1 | rs6604697 |222214995|222215004|19|16|0.552|0.00116|16|3|3|0|3|0|
-|1|rs979623596|38227094|38227169|13|13|0.3780.02525|16|5|4|1|3|0 |
-|1|rs665763|17026519|17026620|15|10|-0.3690.00311|23|5|0|5|0|4 |
-
-This table can have the same "DMR" overlapping different SNPs.
+|chr|snp_id|snp_pos|dmr_inf|dmr_sup|nb_ref_reads|nb_alt_reads|dmr_effect|wilcoxon_corr_pvalue|nb_cpg|nb_sig_cpg|nb_pos_sig_cpg|nb_neg_sig_cpg|nb_consec_pos_sig_asm|nb_consec_neg_sig_asm|
+|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|
+|1|rs1009940|9278142|9278133|9278266|15|15|-0.494|0.00322|5|4|1|3|0|2|
+|1|rs10127939|161518333|161518283|161518415|24|17|-0.297|0.03277|6|3|0|3|0|2|
+|1|rs10157041|161397958|161397867|161397946|21|35|-0.426|0.00275|12|8|0|8|0|6|
 
 Here are the explanations of the different parameters on this table:
 
-- `chr`: this this the chromosome number where the SNP and the DMR are located
-- `snp_id`: the unique identifier for the SNP that was
+- `chr`: this this the chromosome number where the SNP is located
+- `snp_id`: the unique identifier for the SNP that was found to have ASM.
+- `snp_pos`: Coordinate of the SNP.
+- `dmr_inf`: Position of the CpG with significant ASM for the SNP `snp_id` and the smallest coordinate.
+- `dmr_sup`: Position of the CpG with significant ASM for the SNP `snp_id` and the smallest coordinate.
+- `nb_ref_reads`: Number of genomic segments that cover the REF of the SNP.
+- `nb_alt_reads`: Number of genomic segments that cover the ALT of the SNP.
+- `dmr_effect`: The difference between fractional methylation between the ALT and REF genomics segments.
+- `wilcoxon_corr_pvalue`: Wilcoxon p-value of the the `dmr_effect` corrected for multiple testing (across all SNPs).
+- `nb_cpg`: Number of CpGs with at least 5x coverage on both the REF and ALT genomic segments.
+- `nb_pos_sig_cpg`: Number of CpGs with significant ASM and where fractional methylation between ALT and REF is positive.
+- `nb_neg_sig_cpg`: Number of CpGs with significant ASM and where fractional methylation between ALT and REF is negative.
+- `nb_consec_pos_sig_asm`: Number of consecutive CpGs with significant ASM and where fractional methylation between ALT and REF is positive.
+- `neg_consec_sig_cpg`: Number consecutive of CpGs with significant ASM and where fractional methylation between ALT and REF is negative.
+
+After running the pipeline, the results will be available in a CSV file at `gs://OUTPUT_B/SAMPLE/asm/SAMPLE_asm.csv` where `SAMPLE` is the name of the sample and `OUTPUT_B` is the name of the bucket (one of the variables in the main script).
 
 ## Biology significance of CloudASM
 
-Our laboratory has a long-standing expertise in studying allele-specific methylation. To make sure our pipeline avoids outputing false positives, we have implemented the following steps:
+Our laboratory has a long-standing expertise in studying allele-specific methylation. To make sure our pipeline avoids outputing false positives, we have implemented the following steps for stringency:
 
 - we filter out the reads where the confidence in the SNP nucleotide is lower than 30 (variable `SNP_SCORE`)
 - we remove CpGs from the context file where the C or G overlap with a SNP found in the unfiltered list of variants identified by BisSNP
@@ -48,10 +60,7 @@ To catch a "true positive" phenomenon of allele-specific methylation, we use two
 1. single CpG level ASM ("CpG ASM") where we estimate if there is ASM on a CpG that is at least 5x covered on both alleles. We use a cut-off p-value of 0.05 on an exact Fisher's test.
 2. ASM over a region delimited by CpGs that are found on the same reads as the SNP. The region is delimited by two CpGs showing ASM, must contain at least 3 CpGs (variable `CPG_PER_DMR`), must have at least 2 consecutive CpGs with ASM in the same direction (variable `CONSECUTIVE_CPG`), must have an effect size of at least 20% between the two allele (variable `DMR_EFFECT`). The effect size is the difference in methylation percentage between the two alleles calculated across all CpGs in the DMR. We use a p-value of 0.05 on a Wilcoxon test.
 
-
-Note:
-
-- choosing `common_snp` is ~10x larger and will destroy a lot of CpGs.
+All these variables can be adjusted by the user.
 
 ## Pipeline overview
 
@@ -81,15 +90,11 @@ Note that the user can choose the reference genome to align the bisulfite-conver
 - jre1.7.0_25
 - BisSNP-0.82.2
 
-All these packages are included in the Docker-generated image `gcr.io/hackensack-tyco/wgbs-asm`.
-
-Note #1: we need to use a specific version of JAVA to be able to run BisSNP.
-
-Note #2: Bismark reports sequences it aligns reads in positive strand but it is bisulfite-converted. Bis-SNP reports SNPs in positive strand of the reference genome, which is not bisulfite-converted. Therefore, handling these two datasets together requires additional steps.
+All these packages are included in the Docker-generated image `gcr.io/hackensack-tyco/wgbs-asm`. Note that we need to use a specific version of JAVA to be able to run BisSNP.
 
 ## Installation
 
-To run You need to install GCP's Python package called ["dsub"](https://github.com/DataBiosphere/dsub). We recommend using the method where their repository is cloned in combination with the virtual environment.
+To run CloudASM, you need to install GCP's Python package called ["dsub"](https://github.com/DataBiosphere/dsub). We recommend using the method where their repository is cloned in combination with the virtual environment.
 
 ## How to use the pipeline
 

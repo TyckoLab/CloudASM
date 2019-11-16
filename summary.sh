@@ -22,6 +22,7 @@ bq query \
     SELECT
         chr,
         snp_id,
+        snp_pos,
         dmr_inf,
         dmr_sup,
         ref_reads AS nb_ref_reads,
@@ -30,8 +31,8 @@ bq query \
         wilcoxon_corr_pvalue,
         nb_cpg,
         nb_sig_cpg,
-        pos_sig_cpg,
-        neg_sig_cpg,
+        pos_sig_cpg AS nb_pos_sig_cpg,
+        neg_sig_cpg AS nb_neg_sig_cpg,
         nb_consec_pos_sig_asm,
         nb_consec_neg_sig_asm
     FROM ${DATASET_ID}.${SAMPLE}_dmr_pvalue

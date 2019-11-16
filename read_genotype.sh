@@ -23,7 +23,6 @@ bq query \
                 GA_strand,
                 read_start,
                 read_end,
-                r_strand,
                 read_id,
                 cigar,
                 -- we split the CIGAR in 2 arrays, one with letters, one with their corresponding numbers.
@@ -78,7 +77,6 @@ bq query \
                 GA_strand,
                 seq_CT_strand,
                 seq_GA_strand,
-                r_strand,
                 read_id
             FROM 
                 CIG_NUM_REFINED
@@ -99,7 +97,6 @@ bq query \
                 GA_strand,
                 seq_CT_strand,
                 seq_GA_strand,
-                r_strand,
                 read_id
                 FROM 
                 CIG_NUM_REFINED
@@ -120,7 +117,6 @@ bq query \
                 GA_strand,
                 seq_CT_strand,
                 seq_GA_strand,
-                r_strand,
                 read_id
             FROM 
                 CIG_NUM_REFINED
@@ -201,6 +197,7 @@ bq query \
         FROM GROUP_BY_READID
         WHERE nb_alleles = 1
     )
+    -- Need to rejoin to fully-blown list because it was aggregated by read_id
     SELECT 
         snp_id,
         pos,
