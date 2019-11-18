@@ -94,37 +94,13 @@ while read SAMPLE ; do
     echo -e "${SAMPLE}" >> all_samples.tsv
 done < sample_id.txt
 
-
-# Create a file with the number of nucleotides per chromosome.
-echo -e "1\t249250621" > chr.txt && echo -e "2\t243199373" >> chr.txt && echo -e "3\t198022430" >> chr.txt \
-&& echo -e "4\t191154276" >> chr.txt && echo -e "5\t180915260" >> chr.txt && echo -e "6\t171115067" >> chr.txt \
-&& echo -e "7\t159138663" >> chr.txt && echo -e "8\t146364022" >> chr.txt && echo -e "9\t141213431" >> chr.txt \
-&& echo -e "10\t135534747" >> chr.txt && echo -e "11\t135006516" >> chr.txt && echo -e "12\t133851895" >> chr.txt \
-&& echo -e "13\t115169878" >> chr.txt && echo -e "14\t107349540" >> chr.txt && echo -e "15\t102531392" >> chr.txt \
-&& echo -e "16\t90354753" >> chr.txt && echo -e "17\t81195210" >> chr.txt && echo -e "18\t78077248" >> chr.txt \
-&& echo -e "19\t59128983" >> chr.txt && echo -e "20\t63025520" >> chr.txt && echo -e "21\t48129895" >> chr.txt \
-&& echo -e "22\t51304566" >> chr.txt && echo -e "X\t155270560 " >> chr.txt && echo -e "Y\t59373566" >> chr.txt
-
-# The number of nucleotides to be considered in a window when searching SNPs and their reads.
-INTERVAL="45000000"
-
 # Prepare TSV file per chromosome (used for many jobs)
-echo -e "--env SAMPLE\t--env CHR\t--env INF\t--env SUP" > all_chr.tsv
+echo -e "--env SAMPLE\t--env CHR" > all_chr.tsv
 
 # Create a file of job parameters for finding SNPs and their reads.
 while read SAMPLE ; do
   for CHR in `seq 1 22` X Y ; do
-    NUCLEOTIDES_IN_CHR=$(awk -v CHR="${CHR}" -F"\t" '{ if ($1 == CHR) print $2}' chr.txt)
-    INF="1"
-    SUP=$(( $NUCLEOTIDES_IN_CHR<$INTERVAL ? $NUCLEOTIDES_IN_CHR: $INTERVAL ))
-    echo -e "${SAMPLE}\t${CHR}\t$INF\t$SUP" >> all_chr.tsv # for jobs
-    while [ $NUCLEOTIDES_IN_CHR -gt $SUP ] ; do
-      INCREMENT=$(( $NUCLEOTIDES_IN_CHR-$SUP<$INTERVAL ? $NUCLEOTIDES_IN_CHR-$SUP: $INTERVAL ))
-      INF=$(( ${SUP} + 1 ))
-      SUP=$(( ${SUP} + $INCREMENT ))
-      echo -e "${SAMPLE}\t${CHR}\t$INF\t$SUP" >> all_chr.tsv
-      
-    done
+      echo -e "${SAMPLE}\t${CHR}" >> all_chr.tsv   
   done
 done < sample_id.txt
 
@@ -480,21 +456,8 @@ dsub \
 
 ################################# Export context files in Big Query ##################
 
-# Prepare TSV file
-echo -e "--env SAMPLE\t--env STRAND\t--env CONTEXT" > context_to_bq.tsv
 
-while read SAMPLE ; do
-  for STRAND in OB OT ; do
-    for CHR in `seq 1 22` X Y ; do     
-        echo -e "${SAMPLE}\t${STRAND}\tgs://$OUTPUT_B/${SAMPLE}/net_methyl/CpG_${STRAND}_${SAMPLE}_chr${CHR}.txt" >> context_to_bq.tsv
-    done
-  
-  # Delete existing context file on big query
-  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_CpG${STRAND}
-  done
-done < sample_id.txt
-
-# Launch job (48 jobs in parallel per sample, completion under 3 minutes)
+# Launch job (24 jobs per sample -- 4 samples max if BigQuery limit stays the same)
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -502,15 +465,18 @@ dsub \
   --image $DOCKER_GCP \
   --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
-  --command 'bq --location=US load \
+  --command 'bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOB \
+            && bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOT \
+            && for STRAND in "OB" "OT" ; do 
+               bq --location=US load \
                --replace=false \
                --source_format=CSV \
                --skip_leading_rows 1 \
                --field_delimiter "\t" \
                ${DATASET_ID}.${SAMPLE}_CpG${STRAND} \
-               ${CONTEXT} \
+               gs://${OUTPUT_B}/${SAMPLE}/net_methyl/CpG_${STRAND}_${SAMPLE}_chr${CHR}.txt \
                read_id:STRING,meth_state:STRING,chr:STRING,pos:INTEGER,meth_call:STRING' \
-  --tasks context_to_bq.tsv \
+  --tasks all_chr.tsv \
   --name 'export-cpg' \
   --wait
 
@@ -697,8 +663,9 @@ while read SAMPLE ; do
   bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_reads  
 done < sample_id.txt
 
-# This is the most intensive step on BigQuery. The current limit is 100 concomitant queries at the same time.
-# For 136 CPUs per sample (interval 25M), it takes 10 minutes at most so about 11 CPU-hours total
+# This is the most intensive step on BigQuery. The current limit is 100 concomitant queries at the same time
+# so you cannot run more than 4 samples at the same time without asking GCP to expand your quotas (easy process).
+# It takes up to an hour on the largest chromosomes (e.g. 1)
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -721,14 +688,10 @@ dsub \
   --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --command 'bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_reads \
-            && bq query --use_legacy_sql=false --format=csv \
-                "SELECT table_name FROM ${DATASET_ID}.INFORMATION_SCHEMA.TABLES WHERE table_name LIKE \"%_tmp\" " \
-                | grep -v "table_name" > list.txt \
-            && while IFS=, read -r col1 ; do # Loop over the CSV file
-                 #bq cp --append_table ${DATASET_ID}.$col1 ${DATASET_ID}.${SAMPLE}_vcf_reads
-                 #sleep 1s
-                 bq rm -f -t ${DATASET_ID}.$col1 # delete the file from Big Query
-               done < list.txt ' \
+            && for CHR in `seq 1 22` X Y ; do
+                 bq cp --append_table ${DATASET_ID}.${SAMPLE}_vcf_reads_chr${CHR} ${DATASET_ID}.${SAMPLE}_vcf_reads
+                bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_reads_chr${CHR}
+               done' \
   --tasks all_samples.tsv \
   --name 'app-vcf-reads' \
   --wait
