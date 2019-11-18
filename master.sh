@@ -475,7 +475,8 @@ dsub \
                --field_delimiter "\t" \
                ${DATASET_ID}.${SAMPLE}_CpG${STRAND} \
                gs://${OUTPUT_B}/${SAMPLE}/net_methyl/CpG_${STRAND}_${SAMPLE}_chr${CHR}.txt \
-               read_id:STRING,meth_state:STRING,chr:STRING,pos:INTEGER,meth_call:STRING' \
+               read_id:STRING,meth_state:STRING,chr:STRING,pos:INTEGER,meth_call:STRING
+               done' \
   --tasks all_chr.tsv \
   --name 'export-cpg' \
   --wait
