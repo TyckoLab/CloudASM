@@ -103,10 +103,10 @@ echo -e "1\t249250621" > chr.txt && echo -e "2\t243199373" >> chr.txt && echo -e
 && echo -e "13\t115169878" >> chr.txt && echo -e "14\t107349540" >> chr.txt && echo -e "15\t102531392" >> chr.txt \
 && echo -e "16\t90354753" >> chr.txt && echo -e "17\t81195210" >> chr.txt && echo -e "18\t78077248" >> chr.txt \
 && echo -e "19\t59128983" >> chr.txt && echo -e "20\t63025520" >> chr.txt && echo -e "21\t48129895" >> chr.txt \
-&& echo -e "22\t51304566" >> chr.txt && echo -e "X\t155270560" >> chr.txt && echo -e "Y\t59373566" >> chr.txt
+&& echo -e "22\t51304566" >> chr.txt && echo -e "X\t155270560 " >> chr.txt && echo -e "Y\t59373566" >> chr.txt
 
 # The number of nucleotides to be considered in a window when searching SNPs and their reads.
-INTERVAL="50000000"
+INTERVAL="45000000"
 
 # Prepare TSV file per chromosome (used for many jobs)
 echo -e "--env SAMPLE\t--env CHR\t--env INF\t--env SUP" > all_chr.tsv
@@ -532,7 +532,7 @@ dsub \
 
 ########################## Export recal bam to Big Query, clean, and delete from bucket ################################
 
-## First convert the BAM into SAM
+###### First convert the BAM into SAM
 
 # Prepare TSV file
 echo -e "--input BAM\t--output SAM" > bam_to_sam.tsv
@@ -544,7 +544,7 @@ while read SAMPLE ; do
 done < sample_id.txt
 
 
-# Create a SAM in the bucket
+# Create a SAM in the bucket (1h45 for the largest chromosomes)
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -697,8 +697,8 @@ while read SAMPLE ; do
   bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_vcf_reads  
 done < sample_id.txt
 
-#60 min for the largest chromosomes
-# Create one file per chromosome
+# This is the most intensive step on BigQuery. The current limit is 100 concomitant queries at the same time.
+# For 136 CPUs per sample (interval 25M), it takes 10 minutes at most so about 11 CPU-hours total
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -722,11 +722,11 @@ dsub \
   --env DATASET_ID="${DATASET_ID}" \
   --command 'bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_reads \
             && bq query --use_legacy_sql=false --format=csv \
-                "SELECT table_name FROM ${DATASET_ID}.INFORMATION_SCHEMA.TABLES WHERE table_name LIKE \"%_chr${CHR}_%\" " \
+                "SELECT table_name FROM ${DATASET_ID}.INFORMATION_SCHEMA.TABLES WHERE table_name LIKE \"%_tmp\" " \
                 | grep -v "table_name" > list.txt \
             && while IFS=, read -r col1 ; do # Loop over the CSV file
-                 bq cp --append_table ${DATASET_ID}.$col1 ${DATASET_ID}.${SAMPLE}_vcf_reads
-                 sleep 1s    
+                 #bq cp --append_table ${DATASET_ID}.$col1 ${DATASET_ID}.${SAMPLE}_vcf_reads
+                 #sleep 1s
                  bq rm -f -t ${DATASET_ID}.$col1 # delete the file from Big Query
                done < list.txt ' \
   --tasks all_samples.tsv \
