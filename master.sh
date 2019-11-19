@@ -801,9 +801,10 @@ dsub \
 # Takes 4 minutes (0.2 CPU-hours)
 dsub \
   --provider google-v2 \
+  --ssh \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
-  --disk-size 30 \
+  --disk-size 100 \
   --machine-type n1-standard-4 \
   --image ${DOCKER_PYTHON} \
   --logging $LOG \
@@ -812,7 +813,6 @@ dsub \
   --script ${SCRIPTS}/dmr.py \
   --tasks dmr.tsv \
   --wait
-
 
 ########################## Provide a final list of DMRs ##################
 
