@@ -456,6 +456,11 @@ dsub \
 
 ################################# Export context files in Big Query ##################
 
+# Erase files just in case
+while read SAMPLE ; do
+  bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOB
+  bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOT
+done < sample_id.txt
 
 # Launch job (24 jobs per sample -- 4 samples max if BigQuery limit stays the same)
 dsub \
@@ -466,9 +471,8 @@ dsub \
   --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
-  --command 'bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOB \
-            && bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOT \
-            && for STRAND in "OB" "OT" ; do 
+  --command 'for STRAND in "OB" "OT" ; do 
+               echo "Strand" $STRAND
                bq --location=US load \
                --replace=false \
                --source_format=CSV \

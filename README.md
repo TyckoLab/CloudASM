@@ -66,7 +66,7 @@ All these variables can be adjusted by the user.
 
 The pipeline follows these steps:
 
-1. Create a bisulfite-converted genome from the reference genome that was chosen.
+1. Create a bisulfite-converted genome from the reference genome that was chosen
 2. Unzip fastq files and split them into smaller files.
 3. Trim each pair of fastq files
 4. Align each pair of fastq files
