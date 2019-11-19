@@ -465,6 +465,7 @@ dsub \
   --image $DOCKER_GCP \
   --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
+  --env OUTPUT_B="${OUTPUT_B}" \
   --command 'bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOB \
             && bq rm -f -t ${DATASET_ID}.${SAMPLE}_CpGOT \
             && for STRAND in "OB" "OT" ; do 
