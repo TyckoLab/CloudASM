@@ -432,7 +432,7 @@ dsub \
 echo -e "--env SAMPLE\t--env CHR\t--input BAM_BAI\t--output OUTPUT_DIR" > variant_call.tsv
 
 while read SAMPLE ; do
-  for CHR in `seq 12 22` X Y ; do 
+  for CHR in `seq 1 22` X Y ; do 
   echo -e "$SAMPLE\t$CHR\tgs://$OUTPUT_B/$SAMPLE/recal_bam_per_chr/${SAMPLE}_chr${CHR}_recal.ba*\tgs://$OUTPUT_B/$SAMPLE/variants_per_chr/*" >> variant_call.tsv
   done
 done < sample_id.txt
@@ -450,7 +450,7 @@ dsub \
   --input REF_GENOME="${REF_GENOME}/*" \
   --input ALL_VARIANTS="${ALL_VARIANTS}" \
   --script ${SCRIPTS}/variant_call.sh \
-  --tasks variant.tsv \
+  --tasks variant_call.tsv \
   --wait
 
 
