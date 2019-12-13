@@ -557,7 +557,7 @@ dsub \
                --replace=false \
                --source_format=CSV \
                --field_delimiter "\t" \
-               --max_bad_records 1 \
+               --max_bad_records 1000000000 \
                ${DATASET_ID}.${SAMPLE}_recal_sam_uploaded \
                ${SAM} \
                read_id:STRING,flag:INTEGER,chr:STRING,read_start:INTEGER,mapq:INTEGER,cigar:STRING,rnext:STRING,mate_read_start:INTEGER,insert_length:INTEGER,seq:STRING,score:STRING,bismark:STRING,picard_flag:STRING,read_g:STRING,genome_strand:STRING,NM_tag:STRING,meth:STRING,score_before_recal:STRING,read_strand:STRING' \
