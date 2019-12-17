@@ -22,11 +22,11 @@ CloudASM is a turnkey pipeline designed to call allele-specific CpG methylation 
 
 This pipeline takes as an input  zipped fastq files and outputs a table of all single nucleotide polymorphisms (SNPs) with allele-specific methylation. Below, we show an example of the output table:
 
-|chr|snp_id|snp_pos|dmr_inf|dmr_sup|nb_ref_reads|nb_alt_reads|dmr_effect|wilcoxon_corr_pvalue|nb_cpg|nb_sig_cpg|nb_pos_sig_cpg|nb_neg_sig_cpg|nb_consec_pos_sig_asm|nb_consec_neg_sig_asm|
+|chr|snp_id|snp_pos|asm_snp|dmr_inf|dmr_sup|nb_ref_reads|nb_alt_reads|dmr_effect|wilcoxon_corr_pvalue|nb_cpg|nb_sig_cpg|nb_pos_sig_cpg|nb_neg_sig_cpg|nb_consec_pos_sig_asm|nb_consec_neg_sig_asm|
 |--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|
-|1|rs1009940|9278142|9278133|9278266|15|15|-0.494|0.00322|5|4|1|3|0|2|
-|1|rs10127939|161518333|161518283|161518415|24|17|-0.297|0.03277|6|3|0|3|0|2|
-|1|rs10157041|161397958|161397867|161397946|21|35|-0.426|0.00275|12|8|0|8|0|6|
+|1|rs1009940|9278142|true|9278133|9278266|15|15|-0.494|0.00322|5|4|1|3|0|2|
+|1|rs10127939|161518333|true|161518283|161518415|24|17|-0.297|0.03277|6|3|0|3|0|2|
+|1|rs10157041|161397958|true|161397867|161397946|21|35|-0.426|0.00275|12|8|0|8|0|6|
 
 Here are the explanations of the different parameters on this table:
 
