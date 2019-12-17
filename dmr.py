@@ -108,6 +108,9 @@ def consecutive_pos_cpg(row):
 df['nb_consec_pos_sig_asm'] = df.apply(consecutive_pos_cpg, axis = 1)
 df['nb_consec_neg_sig_asm'] = df.apply(consecutive_neg_cpg, axis = 1)
 
+# Sort the dataframe per the chromosome column (pushing Y chromosomes first) to avoid BigQuery treat the chr column as integers
+df_sorted = df.sort_values(by=['chr'], ascending = False)
+
 ################################## Save file in JSON format
 
 # Save to JSON
