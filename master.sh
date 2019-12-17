@@ -839,13 +839,13 @@ dsub \
 # Delete intermediary files on BigQuery
 
 while read SAMPLE ; do
+  echo "Working on sample " $SAMPLE "..."
   bq rm -f -t ${DATASET_ID}.${SAMPLE}_context_filtered
-  bq rm -f -t ${DATASET_ID}.${SAMPLE}_cpg_asm
   bq rm -f -t ${DATASET_ID}.${SAMPLE}_cpg_read_genotype
   bq rm -f -t ${DATASET_ID}.${SAMPLE}_recal_sam_uploaded
-  bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_filtered_uploaded
-  bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_reads
-  bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_reads_genotype 
+  bq rm -f -t ${DATASET_ID}.${SAMPLE}_snps_for_cpg
+  bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_reads_genotype
+  bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_reads_for_genotyping
 done < sample_id.txt
 
 # Delete splited fastq files to save space on the bucket.

@@ -23,6 +23,12 @@ bq query \
         chr,
         snp_id,
         snp_pos,
+        IF (
+            wilcoxon_corr_pvalue < ${P_VALUE} 
+            AND (
+                (pos_sig_cpg >= ${CPG_PER_DMR} AND nb_consec_pos_sig_asm >= ${CONSECUTIVE_CPG} AND dmr_effect > ${DMR_EFFECT})
+                OR (neg_sig_cpg >= ${CPG_PER_DMR} AND nb_consec_neg_sig_asm >= ${CONSECUTIVE_CPG} AND dmr_effect < -${DMR_EFFECT})
+                ), TRUE, FALSE) AS asm_snp,
         dmr_inf,
         dmr_sup,
         ref_reads AS nb_ref_reads,
@@ -36,14 +42,10 @@ bq query \
         nb_consec_pos_sig_asm,
         nb_consec_neg_sig_asm
     FROM ${DATASET_ID}.${SAMPLE}_dmr_pvalue
-    WHERE 
-        wilcoxon_corr_pvalue < ${P_VALUE}
-        AND ABS(dmr_effect) > ${DMR_EFFECT}
-        AND (
-            (pos_sig_cpg >= ${CPG_PER_DMR} AND nb_consec_pos_sig_asm >= ${CONSECUTIVE_CPG} AND dmr_effect > 0)
-            OR (neg_sig_cpg >= ${CPG_PER_DMR} AND nb_consec_neg_sig_asm >= ${CONSECUTIVE_CPG} AND dmr_effect < 0)
-            )
     "
+
+# Delete the file that was just imported by BigQuery
+bq rm -f -t ${DATASET_ID}.${SAMPLE}_dmr_pvalue
 
 bq extract \
     --destination_format CSV \
