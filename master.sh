@@ -22,7 +22,7 @@ CPG_PER_DMR="3"
 CONSECUTIVE_CPG="2" 
 
 # Minimum reading score of the SNP (in ASCII)
-SNP_SCORE="33" # See this table for the correspondance ASCII - Quality score : https://www.drive5.com/usearch/manual/quality_score.html
+SNP_SCORE="33" # In ASCII, "33" corresponds to a quality score of zero. See https://www.drive5.com/usearch/manual/quality_score.html
 
 # Benjamin-Hochberg threshold
 BH_THRESHOLD="0.05"
