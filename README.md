@@ -45,7 +45,7 @@ Here are the explanations of the different parameters on this table:
 - `nb_consec_pos_sig_asm`: Number of consecutive CpGs with significant ASM and where fractional methylation between ALT and REF is positive.
 - `neg_consec_sig_cpg`: Number consecutive of CpGs with significant ASM and where fractional methylation between ALT and REF is negative.
 
-After running the pipeline, the results will be available in a CSV file at `gs://OUTPUT_B/SAMPLE/asm/SAMPLE_asm.csv` where `SAMPLE` is the name of the sample and `OUTPUT_B` is the name of the bucket (one of the variables in the main script).
+After running the pipeline, the results will be available in a CSV file at `gs://OUTPUT_B/SAMPLE/asm/SAMPLE_asm.csv` where `SAMPLE` is the name of the sample and `OUTPUT_B` is the name of the bucket (one of the variables in the master script).
 
 ## Biology significance of CloudASM
 
@@ -102,11 +102,11 @@ To run CloudASM, you need to install GCP's Python package called ["dsub"](https:
 
 2. Clone this repository on your computer
 
-3. Define the **ASM variables** and the **GCP variables** in `main.sh`.
+3. Define the **ASM variables** and the **GCP variables** in `master.sh`.
 
 4. Launch a virtual environment `source dsub_libs/bin/activate` from dsub's repository.
 
-5. Copy, sequentially, all instructions from main.sh into the terminal, block by block (a "block" is a set of instructions included in between two headlines). 
+5. Copy, sequentially, all instructions from `master.sh` into the terminal, block by block (a "block" is a set of instructions included in between two headlines). 
 
 6. Before moving on to the next instructions block, re-run the jobs that fail if you use preemptible machines (failure rate is about 5-10% when using preemptible machines). See below how to do that.
 
