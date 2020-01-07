@@ -21,8 +21,8 @@ CPG_PER_DMR="3"
 # Number of consecutive CpGs with significant ASM in the same direction (among all well-covered CpGs)
 CONSECUTIVE_CPG="2" 
 
-# Minimum reading score of the SNP
-SNP_SCORE="33" # In ASCII, 63 correponds to a quality score of 30. See this table: https://www.drive5.com/usearch/manual/quality_score.html
+# Minimum reading score of the SNP (in ASCII)
+SNP_SCORE="33" # See this table for the correspondance ASCII - Quality score : https://www.drive5.com/usearch/manual/quality_score.html
 
 # Benjamin-Hochberg threshold
 BH_THRESHOLD="0.05"
@@ -41,23 +41,23 @@ ZONE_ID="us-central1-b"
 DATASET_ID="cloudasm_validation" 
 
 # Cloud storage variables (use dashes rather than underscores)
-INPUT_B="encode-wgbs" # where you put your raw files
+INPUT_B="encode-wgbs" # where your zipped fastq are located
 OUTPUT_B="em-encode-paper" # will be created by the script
 REF_DATA_B="wgbs-ref-files" # will be created by the script
 
 # Path of where you downloaded the Github scripts
 SCRIPTS="$HOME/GITHUB_REPOS/wgbs-asm/"
 
-########################## Useful paths (do not modify) ################################
+########################## Useful paths (DO NOT MODIFY) ################################
 
 # Path where to store the logs of the jobs
 LOG="gs://$OUTPUT_B/logging"
 
 # Folder to the bisulfite-converted reference genome
-REF_GENOME="gs://$REF_DATA_B/$GENOME/ref_genome" # do not modify
+REF_GENOME="gs://$REF_DATA_B/$GENOME/ref_genome" 
 
 # Variant database used in SNP calling
-ALL_VARIANTS="gs://$REF_DATA_B/$GENOME/variants/*.vcf" # do not modify
+ALL_VARIANTS="gs://$REF_DATA_B/$GENOME/variants/*.vcf" 
 
 # Docker image with genomic packages 
 DOCKER_GENOMICS="gcr.io/hackensack-tyco/wgbs-asm"
