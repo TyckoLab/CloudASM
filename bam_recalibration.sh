@@ -18,10 +18,8 @@ java \
       I=${BAM} \
       O=$(dirname "${BAM}")/${SAMPLE}_chr${CHR}_sorted.bam \
       SORT_ORDER=coordinate \
+      CREATE_INDEX=true \
       MAX_RECORDS_IN_RAM=9000000
-
-echo "Create index file"
-samtools index $(dirname "${BAM}")/${SAMPLE}_chr${CHR}_sorted.bam
 
 echo "Create recal file. This requires a specific version of Java."
 $JAVA/java \
@@ -49,14 +47,3 @@ $JAVA/java \
     -T BisulfiteTableRecalibration \
     -recalFile $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.csv \
     --max_quality_score 40 
-
-echo "Create a report for the recalibration"
-$JAVA/java \
-    -Djava.io.tmpdir=${TMP_DIR} \
-    -Xmx52g \
-    -jar ${BIS_SNP}/BisulfiteAnalyzeCovariates-0.69.jar \
-    -recalFile $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.csv \
-    -outputDir $(dirname "${OUTPUT_DIR}") \
-    -ignoreQ 5 \
-    --max_quality_score 40 
-
