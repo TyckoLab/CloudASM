@@ -1,5 +1,5 @@
 
-########################## ASM Variables (to be customized) ################################
+########################## Adjustable parameters ################################
 
 # Reference genome
 GENOME="hg19" # "GRCh38" or "hg19"
@@ -37,7 +37,7 @@ PROJECT_ID="hackensack-tyco"
 REGION_ID="us-central1"
 ZONE_ID="us-central1-b"
 
-# Big Query variable (do not use dashes in the name)
+# Name of the Big Query dataset where data will be stored (do not use dashes in the name)
 DATASET_ID="cloudasm_validation" 
 
 # Cloud storage variables (use dashes rather than underscores)
@@ -46,7 +46,7 @@ OUTPUT_B="em-encode-paper" # will be created by the script
 REF_DATA_B="wgbs-ref-files" # will be created by the script
 
 # Path of where you downloaded the Github scripts
-SCRIPTS="$HOME/GITHUB_REPOS/wgbs-asm/"
+SCRIPTS="$HOME/GITHUB_REPOS/CloudASM/"
 
 ########################## Useful paths (DO NOT MODIFY) ################################
 
