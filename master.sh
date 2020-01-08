@@ -11,14 +11,14 @@ SNP_FREQ="0.05" # only used if the option "common_snp" is selected.
 # Effect size required at the ASM region level.
 ASM_REGION_EFFECT="0.2"
 
-# Minimum CpG coverage required per allele for single CpGs to be considered for CpG ASM, in a DMR, or "near" a SNP
+# Minimum CpG coverage required per allele for single CpGs to be considered for CpG ASM, 
 CPG_COV="5"
 
-# Number of CpGs we require near a SNP for it to be considered for an ASM region
+# Minimum number of CpGs we require near a SNP for it to be considered for an ASM region
 CPG_PER_ASM_REGION="3"
 
-# In a DMR, it is also the number of CpGs with significant ASM in the same direction
-CPG_PER_DMR="3"
+# In an ASM region, minimum bumber of CpGs with significant ASM in the same direction
+CPG_SAME_DIRECTION_ASM="3"
 
 # Number of consecutive CpGs with significant ASM in the same direction (among all well-covered CpGs)
 CONSECUTIVE_CPG="2" 
@@ -29,7 +29,7 @@ SNP_SCORE="33" # In ASCII, "33" corresponds to a quality score of zero. See http
 # Benjamin-Hochberg threshold
 BH_THRESHOLD="0.05"
 
-# p-value cut-off used in single-CpG ASM (Fisher test) and DMR ASM (Wilcoxon test)
+# p-value cut-off used in all significant tests
 P_VALUE="0.05"
 
 ########################## GCP variables (to be customized) ################################
@@ -772,14 +772,14 @@ dsub \
   --wait
 
 
-########################## Constitute the DMRs ##################
+########################## Constitute the ASM regions ##################
 
 
 # Prepare TSV file
-echo -e "--input DMR\t--output DMR_PVALUE" > dmr.tsv
+echo -e "--input DMR\t--output DMR_PVALUE" > asm_regions.tsv
 
 while read SAMPLE ; do
-    echo -e "gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_snp_for_dmr.json\tgs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_dmr_pvalue.json" >> dmr.tsv
+    echo -e "gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_snp_for_dmr.json\tgs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_dmr_pvalue.json" >> asm_regions.tsv
 done < sample_id.txt
 
 # Takes three minute
@@ -791,7 +791,7 @@ dsub \
   --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
-  --env CPG_PER_DMR="${CPG_PER_DMR}" \
+  --env CPG_PER_ASM_REGION="${CPG_PER_ASM_REGION}" \
   --env P_VALUE="${P_VALUE}" \
   --script ${SCRIPTS}/asm_region.sh \
   --tasks all_samples.tsv \
@@ -813,10 +813,10 @@ dsub \
   --env P_VALUE="${P_VALUE}" \
   --env BH_THRESHOLD="${BH_THRESHOLD}" \
   --script ${SCRIPTS}/asm_region.py \
-  --tasks dmr.tsv \
+  --tasks asm_regions.tsv \
   --wait
 
-########################## Provide a final list of DMRs ##################
+########################## Provide a final list of ASM regions ##################
 
 # Takes 3 minutes (0.05 CPU-hours)
 dsub \
@@ -828,7 +828,7 @@ dsub \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
   --env ASM_REGION_EFFECT="${ASM_REGION_EFFECT}" \
-  --env CPG_PER_DMR="${CPG_PER_DMR}" \
+  --env CPG_SAME_DIRECTION_ASM="${CPG_SAME_DIRECTION_ASM}" \
   --env P_VALUE="${P_VALUE}" \
   --env CONSECUTIVE_CPG="${CONSECUTIVE_CPG}" \
   --script ${SCRIPTS}/summary.sh \
