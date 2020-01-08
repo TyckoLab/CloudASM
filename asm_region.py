@@ -12,8 +12,8 @@ import statsmodels.stats.multitest as mt
 # The schema of the cpg genotype file is the following and the header is included
 # snp_id
 # chr
-# dmr_inf
-# dmr_sup 
+# asm_region_inf
+# asm_region_sup 
 # ref_reads
 # alt_reads
 # effect
@@ -23,8 +23,8 @@ import statsmodels.stats.multitest as mt
 # nb_sig_cpg
 # cpg: array of pos, effect, fisher_pvalue, ref_cov, and alt_cov
 
-INPUT_FILE = os.environ['DMR']
-OUTPUT_FILE = os.environ['DMR_PVALUE']
+INPUT_FILE = os.environ['ASM_REGION']
+OUTPUT_FILE = os.environ['ASM_REGION_PVALUE']
 P_VALUE = float(os.environ['P_VALUE'])
 BH_THRESHOLD = float(os.environ['BH_THRESHOLD'])
 
@@ -36,7 +36,7 @@ with open(INPUT_FILE) as f:
 df = json_normalize(data)
 
 
-################################## Calculate p-value of DMR
+################################## Calculate p-value of asm_region
 
 # Function to extract Wilcoxon p-value (5-digit rounding)
 def wilcoxon_pvalue(row):

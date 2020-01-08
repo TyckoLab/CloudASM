@@ -51,7 +51,7 @@ bq query \
 
 # Create a long table of all CpG x SNP x read_id combinations
 # 90% of CpGs are dropped because their respective reads could not be linked to a REF or ALT of any SNP
-# This table will be used in the DMR calculation.
+# This table will be used in the asm_region calculation.
 bq query \
     --use_legacy_sql=false \
     --destination_table ${DATASET_ID}.${SAMPLE}_cpg_read_genotype \

@@ -776,10 +776,10 @@ dsub \
 
 
 # Prepare TSV file
-echo -e "--input DMR\t--output DMR_PVALUE" > asm_regions.tsv
+echo -e "--input ASM_REGION\t--output ASM_REGION_PVALUE" > asm_regions.tsv
 
 while read SAMPLE ; do
-    echo -e "gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_snp_for_dmr.json\tgs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_dmr_pvalue.json" >> asm_regions.tsv
+    echo -e "gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_snp_for_asm_region.json\tgs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_asm_region_pvalue.json" >> asm_regions.tsv
 done < sample_id.txt
 
 # Takes three minute
@@ -798,7 +798,7 @@ dsub \
   --wait
 
 
-# Compute Wilcoxon's p-value per DMR between the REF reads and the ALT reads
+# Compute Wilcoxon's p-value per asm_region between the REF reads and the ALT reads
 # Calculate the number of consecutive ASMs in the same direction
 # Takes 4 minutes (0.2 CPU-hours)
 dsub \

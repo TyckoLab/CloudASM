@@ -43,28 +43,28 @@ bq query \
         -- Extract the number of CpG per SNP 
         HET_SNP AS (
             SELECT 
-                snp_id AS snp_id_dmr, 
+                snp_id AS snp_id_asm_region, 
                 snp_pos,
-                chr AS chr_dmr, 
+                chr AS chr_asm_region, 
                 ARRAY_LENGTH(cpg) AS nb_cpg, 
                 (SELECT COUNT(fisher_pvalue) FROM UNNEST(cpg) WHERE fisher_pvalue < ${P_VALUE}) AS nb_sig_cpg, 
                 (SELECT COUNT(fisher_pvalue) FROM UNNEST(cpg) WHERE fisher_pvalue < ${P_VALUE} AND SIGN(effect) = 1) AS pos_sig_cpg,
                 (SELECT COUNT(fisher_pvalue) FROM UNNEST(cpg) WHERE fisher_pvalue < ${P_VALUE} AND SIGN(effect) = -1) AS neg_sig_cpg, 
-                (SELECT MIN(pos) FROM UNNEST(cpg) WHERE fisher_pvalue < ${P_VALUE}) AS dmr_inf,
-                (SELECT MAX(pos) FROM UNNEST(cpg) WHERE fisher_pvalue < ${P_VALUE}) AS dmr_sup,
+                (SELECT MIN(pos) FROM UNNEST(cpg) WHERE fisher_pvalue < ${P_VALUE}) AS asm_region_inf,
+                (SELECT MAX(pos) FROM UNNEST(cpg) WHERE fisher_pvalue < ${P_VALUE}) AS asm_region_sup,
                 (SELECT MIN(pos) FROM UNNEST(cpg)) AS min_cpg,
                 (SELECT MAX(pos) FROM UNNEST(cpg)) AS max_cpg,
                 cpg
             FROM SNP_CPG_ARRAY
         )
-        -- Keep DMR with at least CPG_PER_ASM_REGION CpGs. For 3 CpG per DMR, half of the SNPs are dropped
+        -- Keep ASM regions with at least CPG_PER_ASM_REGION CpGs. For 3 CpG per ASM region, half of the SNPs are dropped
             SELECT * FROM HET_SNP WHERE nb_cpg >= ${CPG_PER_ASM_REGION}
         "
 
-# Create a table of all CpGs to be used in DMR effect
+# Create a table of all CpGs to be used in the calculation of the effect size across an ASM region
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${DATASET_ID}.${SAMPLE}_cpg_for_dmr_effect \
+    --destination_table ${DATASET_ID}.${SAMPLE}_cpg_for_asm_region_effect \
     --replace=true \
     "
     WITH 
@@ -113,12 +113,12 @@ bq query \
             SELECT * 
             FROM ${DATASET_ID}.${SAMPLE}_snp_cpg_array
         ),
-        CPG_FOR_DMR AS (
+        CPG_FOR_ASM_REGION AS (
             SELECT *
-            FROM ${DATASET_ID}.${SAMPLE}_cpg_for_dmr_effect
+            FROM ${DATASET_ID}.${SAMPLE}_cpg_for_asm_region_effect
         )
-        -- we take all CpGs across the DMR that are found in between 2 significant ASM CpGs if they exist, 
-        -- anywhere in the DMR otherwise (which will not be a real DMR because we demand significant CpGs in a DMR).
+        -- we take all CpGs across the asm_region that are found in between 2 significant ASM CpGs if they exist, 
+        -- anywhere in the asm_region otherwise (which will not be a real asm_region because we demand significant CpGs in a asm_region).
         -- We do not discard them to compute accurately the corrected Wilcoxon p-value.
         SELECT
             chr_cpg, 
@@ -129,8 +129,8 @@ bq query \
             snp_pos,
             min_cpg,
             max_cpg,
-            dmr_inf,
-            dmr_sup,
+            asm_region_inf,
+            asm_region_sup,
             allele,
             read_id,
             nb_cpg,
@@ -139,18 +139,18 @@ bq query \
             neg_sig_cpg,
             cpg
         FROM HET_SNP
-        INNER JOIN CPG_FOR_DMR
+        INNER JOIN CPG_FOR_ASM_REGION
         ON 
-            snp_id_cpg = snp_id_dmr 
-            AND chr_cpg = chr_dmr
+            snp_id_cpg = snp_id_asm_region 
+            AND chr_cpg = chr_asm_region
         WHERE 
-            pos_cpg >= IF(dmr_inf IS NULL, min_cpg, dmr_inf) 
-            AND pos_cpg <= IF(dmr_sup IS NULL, max_cpg, dmr_sup)
+            pos_cpg >= IF(asm_region_inf IS NULL, min_cpg, asm_region_inf) 
+            AND pos_cpg <= IF(asm_region_sup IS NULL, max_cpg, asm_region_sup)
         "
         
 bq query \
     --use_legacy_sql=false \
-    --destination_table ${DATASET_ID}.${SAMPLE}_snp_for_dmr \
+    --destination_table ${DATASET_ID}.${SAMPLE}_snp_for_asm_region \
     --replace=true \
     "
     WITH 
@@ -162,8 +162,8 @@ bq query \
                 snp_id,
                 snp_pos,
                 chr_cpg,
-                ANY_VALUE(dmr_inf) AS dmr_inf,
-                ANY_VALUE(dmr_sup) AS dmr_sup,
+                ANY_VALUE(asm_region_inf) AS asm_region_inf,
+                ANY_VALUE(asm_region_sup) AS asm_region_sup,
                 read_id,
                 allele,
                 ROUND(SAFE_DIVIDE(SUM(meth),SUM(cov)),5) AS methyl_perc,
@@ -180,8 +180,8 @@ bq query \
                 snp_id,
                 ANY_VALUE(snp_pos) AS snp_pos,
                 ANY_VALUE(chr_cpg) AS chr,
-                ANY_VALUE(dmr_inf) AS dmr_inf,
-                ANY_VALUE(dmr_sup) AS dmr_sup,
+                ANY_VALUE(asm_region_inf) AS asm_region_inf,
+                ANY_VALUE(asm_region_sup) AS asm_region_sup,
                 ARRAY_AGG(STRUCT(methyl_perc)) AS ref,
                 ANY_VALUE(nb_cpg) AS nb_cpg,
                 ANY_VALUE(nb_sig_cpg) AS nb_sig_cpg,
@@ -215,9 +215,9 @@ bq query \
             snp_id,
             snp_pos,
             chr,
-            dmr_inf,
-            dmr_sup,
-            effect AS dmr_effect,
+            asm_region_inf,
+            asm_region_sup,
+            effect AS asm_region_effect,
             ARRAY_LENGTH(ref) AS ref_reads, 
             ARRAY_LENGTH(alt) AS alt_reads,
             ref, 
@@ -235,12 +235,12 @@ bq query \
 
 # Delete intermediary files
 bq rm -f -t ${DATASET_ID}.${SAMPLE}_snp_cpg_array
-bq rm -f -t ${DATASET_ID}.${SAMPLE}_cpg_for_dmr_effect
+bq rm -f -t ${DATASET_ID}.${SAMPLE}_cpg_for_asm_region_effect
 bq rm -f -t ${DATASET_ID}.${SAMPLE}_cpg_for_wilcox
 
 # Export file to JSON format in the bucket
 # (nested arrays are not supported in)
 bq extract \
     --destination_format NEWLINE_DELIMITED_JSON \
-    ${DATASET_ID}.${SAMPLE}_snp_for_dmr \
-    gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_snp_for_dmr.json
+    ${DATASET_ID}.${SAMPLE}_snp_for_asm_region \
+    gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_snp_for_asm_region.json

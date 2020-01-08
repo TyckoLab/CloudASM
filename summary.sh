@@ -6,12 +6,12 @@ bq --location=US load \
                --autodetect \
                --replace=true \
                --source_format=NEWLINE_DELIMITED_JSON \
-                ${DATASET_ID}.${SAMPLE}_dmr_pvalue \
-               gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_dmr_pvalue.json 
+                ${DATASET_ID}.${SAMPLE}_asm_region_pvalue \
+               gs://$OUTPUT_B/$SAMPLE/asm/${SAMPLE}_asm_region_pvalue.json 
 
 
 # Delete the file generated before computing the p-values.
-bq rm -f -t ${DATASET_ID}.${SAMPLE}_snp_for_dmr
+bq rm -f -t ${DATASET_ID}.${SAMPLE}_snp_for_asm_region
 
 # Query to select the SNPs with at least 3 significant CpGs in the same direction
 bq query \
@@ -29,8 +29,8 @@ bq query \
                 (pos_sig_cpg >= ${CPG_SAME_DIRECTION_ASM} AND nb_consec_pos_sig_asm >= ${CONSECUTIVE_CPG} AND asm_region_effect > ${ASM_REGION_EFFECT})
                 OR (neg_sig_cpg >= ${CPG_SAME_DIRECTION_ASM} AND nb_consec_neg_sig_asm >= ${CONSECUTIVE_CPG} AND asm_region_effect < -${ASM_REGION_EFFECT})
                 ), TRUE, FALSE) AS asm_snp,
-        dmr_inf,
-        dmr_sup,
+        asm_region_inf,
+        asm_region_sup,
         ref_reads AS nb_ref_reads,
         alt_reads AS nb_alt_reads,
         asm_region_effect,
@@ -41,11 +41,11 @@ bq query \
         neg_sig_cpg AS nb_neg_sig_cpg,
         nb_consec_pos_sig_asm,
         nb_consec_neg_sig_asm
-    FROM ${DATASET_ID}.${SAMPLE}_dmr_pvalue
+    FROM ${DATASET_ID}.${SAMPLE}_asm_region_pvalue
     "
 
 # Delete the file that was just imported by BigQuery
-bq rm -f -t ${DATASET_ID}.${SAMPLE}_dmr_pvalue
+bq rm -f -t ${DATASET_ID}.${SAMPLE}_asm_region_pvalue
 
 bq extract \
     --destination_format CSV \
