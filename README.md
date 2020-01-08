@@ -22,7 +22,7 @@ CloudASM is a turnkey pipeline designed to call allele-specific CpG methylation 
 
 This pipeline takes as an input  zipped fastq files and outputs a table of all single nucleotide polymorphisms (SNPs) with allele-specific methylation. Below, we show an example of the output table:
 
-|chr|snp_id|snp_pos|asm_snp|dmr_inf|dmr_sup|nb_ref_reads|nb_alt_reads|dmr_effect|wilcoxon_corr_pvalue|nb_cpg|nb_sig_cpg|nb_pos_sig_cpg|nb_neg_sig_cpg|nb_consec_pos_sig_asm|nb_consec_neg_sig_asm|
+|chr|snp_id|snp_pos|asm_snp|dmr_inf|dmr_sup|nb_ref_reads|nb_alt_reads|asm_region_effect|wilcoxon_corr_pvalue|nb_cpg|nb_sig_cpg|nb_pos_sig_cpg|nb_neg_sig_cpg|nb_consec_pos_sig_asm|nb_consec_neg_sig_asm|
 |--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|
 |1|rs1009940|9278142|true|9278133|9278266|15|15|-0.494|0.00322|5|4|1|3|0|2|
 |1|rs10127939|161518333|true|161518283|161518415|24|17|-0.297|0.03277|6|3|0|3|0|2|
@@ -37,8 +37,8 @@ Here are the explanations of the different parameters on this table:
 - `dmr_sup`: Position of the CpG with significant ASM for the SNP `snp_id` and the smallest coordinate.
 - `nb_ref_reads`: Number of genomic segments that cover the REF of the SNP.
 - `nb_alt_reads`: Number of genomic segments that cover the ALT of the SNP.
-- `dmr_effect`: The difference between fractional methylation between the ALT and REF genomics segments.
-- `wilcoxon_corr_pvalue`: Wilcoxon p-value of the the `dmr_effect` corrected for multiple testing (across all SNPs).
+- `asm_region_effect`: The difference between fractional methylation between the ALT and REF genomics segments.
+- `wilcoxon_corr_pvalue`: Wilcoxon p-value of the the `asm_region_effect` corrected for multiple testing (across all SNPs).
 - `nb_cpg`: Number of CpGs with at least 5x coverage on both the REF and ALT genomic segments.
 - `nb_pos_sig_cpg`: Number of CpGs with significant ASM and where fractional methylation between ALT and REF is positive.
 - `nb_neg_sig_cpg`: Number of CpGs with significant ASM and where fractional methylation between ALT and REF is negative.
@@ -58,7 +58,7 @@ Our laboratory has a long-standing expertise in studying allele-specific methyla
 To catch a "true positive" phenomenon of allele-specific methylation, we use two types of calculation:
 
 1. single CpG level ASM ("CpG ASM") where we estimate if there is ASM on a CpG that is at least 5x covered on both alleles. We use a cut-off p-value of 0.05 on an exact Fisher's test.
-2. ASM over a region delimited by CpGs that are found on the same reads as the SNP. The region is delimited by two CpGs showing ASM, must contain at least 3 CpGs (variable `CPG_PER_DMR`), must have at least 2 consecutive CpGs with ASM in the same direction (variable `CONSECUTIVE_CPG`), must have an effect size of at least 20% between the two allele (variable `DMR_EFFECT`). The effect size is the difference in methylation percentage between the two alleles calculated across all CpGs in the DMR. We use a p-value of 0.05 on a Wilcoxon test.
+2. ASM over a region delimited by CpGs that are found on the same reads as the SNP. The region is delimited by two CpGs showing ASM, must contain at least 3 CpGs (variable `CPG_PER_DMR`), must have at least 2 consecutive CpGs with ASM in the same direction (variable `CONSECUTIVE_CPG`), must have an effect size of at least 20% between the two allele (variable `ASM_REGION_EFFECT`). The effect size is the difference in methylation percentage between the two alleles calculated across all CpGs in the DMR. We use a p-value of 0.05 on a Wilcoxon test.
 
 All these variables can be adjusted by the user.
 

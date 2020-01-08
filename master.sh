@@ -8,8 +8,8 @@ GENOME="hg19" # "GRCh38" or "hg19"
 SNPS_FOR_CPG="common_snp" # "raw.vcf" or "filtered.vcf" or "common_snp"
 SNP_FREQ="0.05" # only used if the option "common_snp" is selected.
 
-# Effect size required at the DMR level for an ASM.
-DMR_EFFECT="0.2"
+# Effect size required at the ASM region level.
+ASM_REGION_EFFECT="0.2"
 
 # Minimum CpG coverage required per allele for single CpGs to be considered for CpG ASM, in a DMR, or "near" a SNP
 CPG_COV="5"
@@ -810,7 +810,7 @@ dsub \
   --logging $LOG \
   --env P_VALUE="${P_VALUE}" \
   --env BH_THRESHOLD="${BH_THRESHOLD}" \
-  --script ${SCRIPTS}/dmr.py \
+  --script ${SCRIPTS}/asm_region.py \
   --tasks dmr.tsv \
   --wait
 
@@ -825,7 +825,7 @@ dsub \
   --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
-  --env DMR_EFFECT="${DMR_EFFECT}" \
+  --env ASM_REGION_EFFECT="${ASM_REGION_EFFECT}" \
   --env CPG_PER_DMR="${CPG_PER_DMR}" \
   --env P_VALUE="${P_VALUE}" \
   --env CONSECUTIVE_CPG="${CONSECUTIVE_CPG}" \

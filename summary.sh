@@ -26,14 +26,14 @@ bq query \
         IF (
             wilcoxon_corr_pvalue < ${P_VALUE} 
             AND (
-                (pos_sig_cpg >= ${CPG_PER_DMR} AND nb_consec_pos_sig_asm >= ${CONSECUTIVE_CPG} AND dmr_effect > ${DMR_EFFECT})
-                OR (neg_sig_cpg >= ${CPG_PER_DMR} AND nb_consec_neg_sig_asm >= ${CONSECUTIVE_CPG} AND dmr_effect < -${DMR_EFFECT})
+                (pos_sig_cpg >= ${CPG_PER_DMR} AND nb_consec_pos_sig_asm >= ${CONSECUTIVE_CPG} AND asm_region_effect > ${ASM_REGION_EFFECT})
+                OR (neg_sig_cpg >= ${CPG_PER_DMR} AND nb_consec_neg_sig_asm >= ${CONSECUTIVE_CPG} AND asm_region_effect < -${ASM_REGION_EFFECT})
                 ), TRUE, FALSE) AS asm_snp,
         dmr_inf,
         dmr_sup,
         ref_reads AS nb_ref_reads,
         alt_reads AS nb_alt_reads,
-        dmr_effect,
+        asm_region_effect,
         wilcoxon_corr_pvalue,
         nb_cpg,
         nb_sig_cpg,
