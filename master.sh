@@ -14,7 +14,9 @@ ASM_REGION_EFFECT="0.2"
 # Minimum CpG coverage required per allele for single CpGs to be considered for CpG ASM, in a DMR, or "near" a SNP
 CPG_COV="5"
 
-# Number of CpGs we require near a SNP for it to be tested with ASM DMR 
+# Number of CpGs we require near a SNP for it to be considered for an ASM region
+CPG_PER_ASM_REGION="3"
+
 # In a DMR, it is also the number of CpGs with significant ASM in the same direction
 CPG_PER_DMR="3"
 
@@ -791,7 +793,7 @@ dsub \
   --env OUTPUT_B="${OUTPUT_B}" \
   --env CPG_PER_DMR="${CPG_PER_DMR}" \
   --env P_VALUE="${P_VALUE}" \
-  --script ${SCRIPTS}/dmr.sh \
+  --script ${SCRIPTS}/asm_region.sh \
   --tasks all_samples.tsv \
   --wait
 

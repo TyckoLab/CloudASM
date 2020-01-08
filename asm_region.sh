@@ -14,7 +14,7 @@ bq --location=US load \
 # Delete SAMPLE_cpg_genotype (the new file sample_cpg_asm has the same information and the ASM p-value)
 bq rm -f -t ${DATASET_ID}.${SAMPLE}_cpg_genotype
 
-# Create a table with one row per SNP with at least CPG_PER_DMR CpGs nearby for which a fisher p-value was calculated
+# Create a table with one row per SNP with at least CPG_PER_ASM_REGION CpGs nearby for which a fisher p-value was calculated
 bq query \
     --use_legacy_sql=false \
     --destination_table ${DATASET_ID}.${SAMPLE}_snp_cpg_array \
@@ -57,8 +57,8 @@ bq query \
                 cpg
             FROM SNP_CPG_ARRAY
         )
-        -- Keep DMR with at least CPG_PER_DMR CpGs. For 3 CpG per DMR, half of the SNPs are dropped
-            SELECT * FROM HET_SNP WHERE nb_cpg >= ${CPG_PER_DMR}
+        -- Keep DMR with at least CPG_PER_ASM_REGION CpGs. For 3 CpG per DMR, half of the SNPs are dropped
+            SELECT * FROM HET_SNP WHERE nb_cpg >= ${CPG_PER_ASM_REGION}
         "
 
 # Create a table of all CpGs to be used in DMR effect
