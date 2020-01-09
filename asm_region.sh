@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Import the file where the p-value of each cpg
-# is calculated.
+# Import the file where the p-value of each cpg is calculated.
 bq --location=US load \
                --replace=true \
                --source_format=CSV \

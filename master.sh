@@ -29,7 +29,7 @@ SNP_SCORE="33" # In ASCII, "33" corresponds to a quality score of zero. See http
 # Benjamin-Hochberg threshold
 BH_THRESHOLD="0.05"
 
-# p-value cut-off used in all significant tests
+# p-value cut-off used in all tests for significance
 P_VALUE="0.05"
 
 ########################## GCP variables (to be customized) ################################
@@ -43,8 +43,8 @@ ZONE_ID="us-central1-b"
 DATASET_ID="cloudasm_validation" 
 
 # Cloud storage variables (use dashes rather than underscores)
-INPUT_B="encode-wgbs" # where your zipped fastq are located
-OUTPUT_B="em-encode-paper" # will be created by the script
+INPUT_B="cloudasm/fastq" # where your zipped fastq are located. Our bucket gs://cloudasm is public with test data in it.
+OUTPUT_B="cloudasm" # will be created by the script if it does not exist. You will not be able to write in the public cloudasm public bucket 
 REF_DATA_B="wgbs-ref-files" # will be created by the script
 
 # Path of where you downloaded the Github scripts
@@ -208,6 +208,9 @@ sed -i '1i --input R1\t--input R2\t--output FOLDER' trim.tsv
 
 # Print a message in the terminal
 echo "There are" $(cat trim.tsv | wc -l) "to be launched"
+
+# Note: you might have to change the adapters and the trimming parameters below based on the library preparation
+# By default, we use the Illumina library parameters.
 
 # Submit job. 
 dsub \
