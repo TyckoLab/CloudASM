@@ -151,7 +151,7 @@ awk -v INPUT_B="${INPUT_B}" \
     {if (NR!=1) 
         print $2, $5, "gs://"OUTPUT_B"/"$1"/split_fastq/*.fastq" 
      }' \
-    samples.tsv >> decompress.tsv 
+    all_samples.tsv >> decompress.tsv 
 
 # Creating ~ 4,000 pairs of 1.2M-row fastq files if the zipped fastq file is ~80GB.
 
