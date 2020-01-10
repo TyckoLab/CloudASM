@@ -7,7 +7,7 @@ Last updated: October 11, 2019. Please check our preprint on [biorxiv](https://w
 
   - [Overview](#overview)
   - [Biology significance of CloudASM](#biology-significance-of-cloudasm)
-  - [Pipeline overview](#pipeline-overview)
+  - [Main steps in the CloudASM pipeline](#Main-steps-in-the-CloudASM-pipeline)
   - [Bioinformatics packages used in CloudASM](#bioinformatics-packages-used-in-cloudasm)
   - [Installation](#installation)
   - [How to use the pipeline](#how-to-use-the-pipeline)
@@ -62,7 +62,7 @@ To catch a "true positive" phenomenon of allele-specific methylation, we use two
 
 All these variables can be adjusted by the user.
 
-## Pipeline overview
+## Main steps in the CloudASM pipeline
 
 The pipeline follows these steps:
 
@@ -90,7 +90,29 @@ Note that the user can choose the reference genome to align the bisulfite-conver
 - jre1.7.0_25
 - BisSNP-0.82.2
 
-All these packages are included in the Docker-generated image `gcr.io/hackensack-tyco/wgbs-asm`. Note that we need to use a specific version of JAVA to be able to run BisSNP.
+All these packages are included in the Docker-generated publicly-available image `gcr.io/hackensack-tyco/wgbs-asm`. Note that we need to use a specific version of JAVA to be able to run BisSNP.
+
+## If you are new to Google Cloud Computing
+
+Google Cloud Computing (GCP) is a service for cloud computing, just like Amazon Web Services and Microsoft Azur Cloud Compute.
+
+To be able use CloudASM, you need to create an account on https://cloud.google.com/ and set up how you want to be billed (e.g. with a credit card). As of January 2020, GCP offers $300 in credits for opening an account -- which is enough to test this pipeline.
+
+Once you do that, you need to create a "project" within GCP and choose which geographical ["region" and "zone"](https://www.google.com/search?q=gcp+regions&rlz=1C5CHFA_enUS809US809&oq=gcp+regions&aqs=chrome..69i57.1415j0j7&sourceid=chrome&ie=UTF-8) you want to request resources from. It is recommended to pick a region and zone near your location. Every job you submit within your project will pull resources from the region and zone you chose.
+
+For this reason, you will need to go over to the [Quotas](https://console.cloud.google.com/iam-admin/quotas) and you need to make sure you have access to the following quotas to be able to run 10 WGBS samples at the same time:
+- 3,000 `Queries per 100 seconds` in Compute Engine API (zone: "Global")
+- 2,000 `Read requests per 100 seconds` in Compute Engine API (zone: "Global")
+- 2,000 `Lists requests per 100 seconds` in Compute Engine API (zone: "Global")
+- 50,000 `Queries per 100 seconds` for the Genomics API (zone: "Global")
+- 2,000 `In-use IP addresses` in Compute Engine API in your zone.
+- 200 TB of `Persistent Disk Standard (GB)` in your zone.
+- 100,000 CPUs in Compute Engine API in your zone.
+
+All of these values should be by default except the number of CPUs. We need 16 x 
+
+
+GCP offers a suite of services and CloudASM uses [Compute Engine](https://cloud.google.com/compute/), where virtual machines can be created and used for CloudASM's tasks, [Cloud Storage](https://cloud.google.com/storage/), where data is stored before and after being processed by virtual machines, and [Big Query](https://cloud.google.com/bigquery/), where the aligned reads, variants, and methylation states are analyzed jointly to estimate ASM.
 
 ## Installation
 
@@ -109,6 +131,10 @@ To run CloudASM, you need to install GCP's Python package called ["dsub"](https:
 5. Copy, sequentially, all instructions from `master.sh` into the terminal, block by block (a "block" is a set of instructions included in between two headlines). 
 
 6. Before moving on to the next instructions block, re-run the jobs that fail if you use preemptible machines (failure rate is about 5-10% when using preemptible machines). See below how to do that.
+
+## Test the pipeline
+
+https://console.cloud.google.com/storage/browser/cloudasm
 
 ## Prepare the fastq files to be analyzed
 
