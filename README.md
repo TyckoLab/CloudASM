@@ -100,6 +100,18 @@ To be able use CloudASM, you need to create an account on https://cloud.google.c
 
 Once you do that, you need to create a "project" within GCP and choose which geographical ["region" and "zone"](https://www.google.com/search?q=gcp+regions&rlz=1C5CHFA_enUS809US809&oq=gcp+regions&aqs=chrome..69i57.1415j0j7&sourceid=chrome&ie=UTF-8) you want to request resources from. It is recommended to pick a region and zone near your location. Every job you submit within your project will pull resources from the region and zone you chose.
 
+EXPLAIN HOW THE DATA IS IN "BUCKETS" ETC.
+
+jobs with dsub requires the project name, the zone in which the
+virtual machine (VM) is to be launched, input bucket, output
+bucket, logging bucket, docker image name, machine configuration and a command/program to execute. Upon receiving this
+information, Google cloud executes that command on a docker
+image launched on . Upon receiving this
+information, Google cloud executes that command on a docker
+image launched on a VM with the machine configuration
+specified by dsub.
+
+
 For this reason, you will need to go over to the [Quotas](https://console.cloud.google.com/iam-admin/quotas) and you need to make sure you have access to the following quotas to be able to run 10 WGBS samples at the same time:
 - 3,000 `Queries per 100 seconds` in Compute Engine API (zone: "Global")
 - 2,000 `Read requests per 100 seconds` in Compute Engine API (zone: "Global")

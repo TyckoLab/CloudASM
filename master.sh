@@ -365,6 +365,8 @@ while read SAMPLE ; do
   done
 done < sample_id.txt
 
+# Note: you may need to customize the number of base pairs you ignore in the net methylation call.
+
 # Launch job
 dsub \
   --provider google-v2 \
