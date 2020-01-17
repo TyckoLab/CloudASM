@@ -200,7 +200,7 @@ dsub \
 # When using preemptive machines, we have experienced a 0.75% failure rate.
 
 # Create an TSV file with parameters for the job
-rm -f trim.tsv && touch trim.tsv
+echo -e "--input R1\t--input R2\t--output FOLDER" > trim.tsv
 
 # Prepare inputs and outputs for each sample
 while read SAMPLE ; do
@@ -221,9 +221,6 @@ while read SAMPLE ; do
   # Add the sample's 3 info (R1, R2, output folder) to the TSV file
   paste -d '\t' R1_files_${SAMPLE}.txt R2_files_${SAMPLE}.txt output_dir_${SAMPLE}.txt >> trim.tsv
 done < sample_id.txt
-
-# Add headers to the file
-sed -i '1i --input R1\t--input R2\t--output FOLDER' trim.tsv
 
 # Print a message in the terminal
 echo "There are" $(cat trim.tsv | wc -l) "to be launched"
