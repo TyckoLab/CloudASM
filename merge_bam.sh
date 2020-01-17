@@ -8,8 +8,15 @@ PICARD="/genomics-packages/picard-tools-1.97"
 TMP_DIR="/mnt/data/tmp/"
 mkdir -p ${TMP_DIR}
 
-echo "Merge per chromosome."
-samtools merge $(dirname "${TMP_DIR}")/${SAMPLE}_chr${CHR}_merged.bam $BAM_FILES
+echo "Merge per chromosome..."
+NB_BAM_FILES=$(ls ${BAM_FILES} | wc -l)
+if [ ${NB_BAM_FILES} == 1 ] ; then
+    echo "Only one chard is relevant"
+    cp ${BAM_FILES} $(dirname "${TMP_DIR}")/${SAMPLE}_chr${CHR}_merged.bam
+else 
+    echo "Several chards are relevant"
+    samtools merge $(dirname "${TMP_DIR}")/${SAMPLE}_chr${CHR}_merged.bam $BAM_FILES
+fi
 
 echo "Sort by coordinate"
 java -Xmx48g \

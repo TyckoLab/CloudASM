@@ -1,7 +1,26 @@
 
-########################## Adjustable parameters ################################
+#----------------------------------- Library parameters
 
-# Reference genome
+# These parameters depend on how your libraries were prepared.
+
+## TRIMMING
+
+# Adapters. By default: Illumina adapters in paired-end samples. 
+ADAPTER_A="AGATCGGAAGAGCACACGTCTGAAC"
+ADAPTER_A2="AGATCGGAAGAGCGTCGTGTAGGGA"
+
+
+## NET METHYLATION
+
+# Number of base pairs to ignore on each side of each read for net methylation
+IGNORE_R1="3" # 5'
+THREE_PRIME_IGNORE_R1="3"
+IGNORE_R2="2" # 5'
+THREE_PRIME_IGNORE_R2="2"
+
+#----------------------------------- ASM parameters
+
+# Reference genome to align the data
 GENOME="hg19" # "GRCh38" or "hg19"
 
 # SNP database used to "destroy" CpG sites that overlap with them
@@ -32,7 +51,8 @@ BH_THRESHOLD="0.05"
 # p-value cut-off used in all tests for significance
 P_VALUE="0.05"
 
-########################## GCP variables (to be customized) ################################
+
+#----------------------------------- GCP parameters 
 
 # GCP global variables
 PROJECT_ID="hackensack-tyco"
@@ -40,7 +60,7 @@ REGION_ID="us-central1"
 ZONE_ID="us-central1-b"
 
 # Name of the Big Query dataset where data will be stored (do not use dashes in the name)
-DATASET_ID="cloudasm_validation" 
+DATASET_ID="cloudasm" 
 
 # Cloud storage variables (use dashes rather than underscores)
 INPUT_B="cloudasm/fastq" # where your zipped fastq are located. Our bucket gs://cloudasm is public with test data in it.
@@ -49,6 +69,8 @@ REF_DATA_B="wgbs-ref-files" # will be created by the script
 
 # Path of where you downloaded the Github scripts
 SCRIPTS="$HOME/GITHUB_REPOS/CloudASM/"
+
+
 
 ########################## Useful paths (DO NOT MODIFY) ################################
 
@@ -75,11 +97,10 @@ DOCKER_GCP="google/cloud-sdk:255.0.0"
 # Refer to the Github on how to prepare the sample info file
 
 # Create a local folder on the computer 
-mkdir -p $HOME/"wgbs" 
-cd $HOME/"wgbs" 
+mkdir -p ${SCRIPTS}/"run_files" 
+cd ${SCRIPTS}/"run_files"
 
-# Download the metadata to the local folder
-gsutil cp gs://$INPUT_B/samples.tsv $HOME/"wgbs"
+# Making sure the sample info file is in the right format and in the "run_files" folder
 dos2unix samples.tsv 
 
 # List of samples
@@ -140,8 +161,6 @@ dsub \
 
 ########################## Unzip, rename, and split fastq files ################################
 
-# Takes ~2 hours per 80G of zipped fastq file.
-
 # Create an TSV file with parameters for the job
 echo -e '--input ZIPPED\t--env FASTQ\t--output OUTPUT_FILES' > decompress.tsv
 
@@ -153,7 +172,7 @@ awk -v INPUT_B="${INPUT_B}" \
      }' \
     samples.tsv >> decompress.tsv 
 
-# Creating ~ 4,000 pairs of 1.2M-row fastq files if the zipped fastq file is ~80GB.
+# Creating ~ 4,000 pairs of 1.2M-row fastq files over 2 hours if zipped fastq file are ~80GB each. 
 
 # Launch job
 dsub \
@@ -221,9 +240,11 @@ dsub \
   --machine-type n1-standard-2 \
   --preemptible \
   --logging $LOG \
+  --env ADAPTER_A="${ADAPTER_A}" \
+  --env ADAPTER_A2="${ADAPTER_A2}" \
   --command 'trim_galore \
-      -a AGATCGGAAGAGCACACGTCTGAAC \
-      -a2 AGATCGGAAGAGCGTCGTGTAGGGA \
+      -a ${ADAPTER_A} \
+      -a2 ${ADAPTER_A2} \
       --quality 30 \
       --length 40 \
       --paired \
@@ -377,6 +398,10 @@ dsub \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
   --logging $LOG \
+  --env IGNORE_R1="${IGNORE_R1}" \
+  --env THREE_PRIME_IGNORE_R1="${THREE_PRIME_IGNORE_R1}" \
+  --env IGNORE_R2="${IGNORE_R2}" \
+  --env THREE_PRIME_IGNORE_R2="${THREE_PRIME_IGNORE_R2}" \
   --command 'bismark_methylation_extractor \
                   -p \
                   --no_overlap \
@@ -388,10 +413,10 @@ dsub \
                   --buffer_size 48G \
                   --output $(dirname ${OUTPUT_DIR}) \
                   ${BAM} \
-                  --ignore 3 \
-                  --ignore_3prime 3 \
-                  --ignore_r2 2 \
-                  --ignore_3prime_r2 2' \
+                  --ignore ${IGNORE_R1} \
+                  --ignore_3prime ${THREE_PRIME_IGNORE_R1} \
+                  --ignore_r2 ${IGNORE_R2} \
+                  --ignore_3prime_r2 ${THREE_PRIME_IGNORE_R2}' \
   --tasks methyl.tsv \
   --wait
 

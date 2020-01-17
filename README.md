@@ -150,6 +150,8 @@ https://console.cloud.google.com/storage/browser/cloudasm
 
 ## Prepare the fastq files to be analyzed
 
+https://docs.google.com/spreadsheets/d/1WFpR_uM9BdBAdoCcIoVfM7rjuJF-khlvJTKHHd7bkEQ/edit#gid=0
+
 Create a bucket (variable `INPUT_B` in the master script) and create, within this bucket, one folder per sample (the folder should have the name of the sample -- do not use dashes in the name of the sample). In the `INPUT_B` bucket, upload a CSV file that describes the sample's files, using the model below:
 
 | sample | bucket_url | lane_id | read_id | file_new_name |
