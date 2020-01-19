@@ -60,6 +60,7 @@ REGION_ID="us-central1"
 ZONE_ID="us-central1-b"
 
 # Name of the Big Query dataset where data will be stored (do not use dashes in the name)
+# Use a name to identify your run.
 DATASET_ID="cloudasm" 
 
 # Cloud storage variables (use dashes rather than underscores)
@@ -70,12 +71,10 @@ REF_DATA_B="wgbs-ref-files" # will be created by the script
 # Path of where you downloaded the Github scripts
 SCRIPTS="$HOME/GITHUB_REPOS/CloudASM/"
 
-
-
 ########################## Useful paths (DO NOT MODIFY) ################################
 
 # Path where to store the logs of the jobs
-LOG="gs://$OUTPUT_B/logging"
+LOG="gs://$OUTPUT_B/logging/${DATASET_ID}"
 
 # Folder to the bisulfite-converted reference genome
 REF_GENOME="gs://$REF_DATA_B/$GENOME/ref_genome" 
@@ -700,7 +699,6 @@ done < sample_id.txt
 
 # This is the most intensive step on BigQuery. The current limit is 100 concomitant queries at the same time
 # so you cannot run more than 4 samples at the same time without asking GCP to expand your quotas (easy process).
-# It takes up to an hour on the largest chromosomes (e.g. 1)
 dsub \
   --provider google-v2 \
   --project $PROJECT_ID \
@@ -738,8 +736,7 @@ dsub \
 # We leave out the 0.00093% where the CIGAR string has 7 numbers or more
 # Note: 0.05% of SNPs are left out when the SNP is at the last position of the read.
 
-# We also remove the reads where the score of the nucleotide with the SNP is below 30
-# This removes ~ 7% of the reads.
+# We also remove the reads where the SNP cannot be identified with a minimal score.
 
 # Takes ~2 min
 dsub \
@@ -827,7 +824,7 @@ dsub \
 
 # Compute Wilcoxon's p-value per asm_region between the REF reads and the ALT reads
 # Calculate the number of consecutive ASMs in the same direction
-# Takes 4 minutes (0.2 CPU-hours)
+# Takes 4 minutes 
 dsub \
   --provider google-v2 \
   --ssh \
