@@ -51,7 +51,7 @@ After running the pipeline, the results will be available in a CSV file at `gs:/
 
 Our laboratory has a long-standing expertise in studying allele-specific methylation. To make sure our pipeline avoids outputing false positives, we have implemented the following steps for stringency:
 
-![Definition of an ASM region]([http://url/to/img.png](https://github.com/TyckoLab/CloudASM/blob/master/ASM.png))
+![Definition of an ASM region](https://github.com/TyckoLab/CloudASM/blob/master/ASM.png)
 
 
 - we filter out the reads where the confidence in the SNP nucleotide is lower than 30 (variable `SNP_SCORE`)
