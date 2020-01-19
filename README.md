@@ -51,6 +51,9 @@ After running the pipeline, the results will be available in a CSV file at `gs:/
 
 Our laboratory has a long-standing expertise in studying allele-specific methylation. To make sure our pipeline avoids outputing false positives, we have implemented the following steps for stringency:
 
+![Definition of an ASM region]([http://url/to/img.png](https://github.com/TyckoLab/CloudASM/blob/master/ASM.png))
+
+
 - we filter out the reads where the confidence in the SNP nucleotide is lower than 30 (variable `SNP_SCORE`)
 - we remove CpGs from the context file where the C or G overlap with a SNP found in the unfiltered list of variants identified by BisSNP
 - We do not consider for ASM the SNPs that are not within 500 bp of at least a CpG
