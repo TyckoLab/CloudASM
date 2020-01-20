@@ -136,18 +136,18 @@ The zipped fastq files are freely accessible on [our GCP’s storage space](http
 
 To test the pipeline, you will have to change all GCP parameters except the variable `INPUT_B`. As you will when running the pipeline, for each sample, CloudASM creates the following folders:
 
-- aligned_per_chard
-- asm
-- bam_per_chard_and_chr
-- bam_per_chr
-- bedgraph
-- net_methyl
-- recal_bam_per_chr
-- sam
-- snps_for_cpg
-- split_fastq
-- trimmed_fastq
-- variants_per_chr
+- `split_fastq`: fastq files unzipped and split into 120,000 rows chards
+- `trimmed_fastq`: trimmed pairs of fastq chards from `split_fastq`
+- `aligned_per_chard`: BAM files created from aligning trimmed chards of fastq files from `trimmed_fastq`
+- `bam_per_chard_and_chr`: The BAM files from `aligned_per_chard` are split across chromosomes
+- `bam_per_chr`: The BAM files from `bam_per_chard_and_chr` are merged across chromosomes
+- `net_methyl`: context files created from calling net methylation on the BAM files located in `bam_per_chr`.
+- `recal_bam_per_chr`: Recalibrated BAM files from `bam_per_chr` 
+- `variants_per_chr`: VCF files for each chromosomes created from the BAM files in `recal_bam_per_chr`.
+- `asm`: Tables of CpG-level and region-level of ASM.
+- `bedgraph`: bedgraph files of coverage and methylation percentage across the whole sample
+- `sam`: SAM files created from BAM files in `recal_bam_per_chr`.
+- `snps_for_cpg`: database of SNPs used to remove CpG sites potentially overlapping with a variant.
 
 ## Prepare the fastq files to be analyzed
 
