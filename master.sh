@@ -64,6 +64,7 @@ ZONE_ID="us-central1-b"
 DATASET_ID="cloudasm" 
 
 # Cloud storage variables (use dashes rather than underscores)
+# Make sure the buckets exist and are "standard" (as opposed to nearline or coldstorage)
 INPUT_B="cloudasm/fastq" # where your zipped fastq are located. Our bucket gs://cloudasm is public with test data in it.
 OUTPUT_B="cloudasm" # will be created by the script if it does not exist. You will not be able to write in the public cloudasm public bucket 
 REF_DATA_B="wgbs-ref-files" # will be created by the script
@@ -91,23 +92,28 @@ DOCKER_PYTHON="gcr.io/hackensack-tyco/python"
 # Off-the-shelf Docker image for GCP-only jobs
 DOCKER_GCP="google/cloud-sdk:255.0.0"
 
-########################## Download sample info file ################################
-
-# Refer to the Github on how to prepare the sample info file
-
 # Create a local folder on the computer 
 mkdir -p ${SCRIPTS}/"run_files" 
 cd ${SCRIPTS}/"run_files"
 
+# Create dataset in Big Query
+bq --location=us mk --dataset ${PROJECT_ID}:${DATASET_ID}
+
+
+########################## Prepare sample info file ################################
+
+# Refer to the Github README on how to prepare and download the "samples.tsv file below
+
+
+######################### Prepare generic task files based on the samples #########
+
 # Making sure the sample info file is in the right format and in the "run_files" folder
 dos2unix samples.tsv 
 
-# List of samples
-awk -F "\t" \
-    '{if (NR!=1) \
-    print $1}' samples.tsv | uniq > sample_id.txt
+#--------- Tasks centered on samples
 
-echo "There are" $(cat sample_id.txt | wc -l) "samples to be analyzed"
+# List of samples
+awk -F "\t" '{if (NR!=1) print $1}' samples.tsv | uniq > sample_id.txt
 
 # Prepare TSV file with just the samples (used for most jobs)
 echo -e "--env SAMPLE" > all_samples.tsv
@@ -116,33 +122,23 @@ while read SAMPLE ; do
     echo -e "${SAMPLE}" >> all_samples.tsv
 done < sample_id.txt
 
+#--------- Tasks centered on chromosomes
+
 # Prepare TSV file per chromosome (used for many jobs)
 echo -e "--env SAMPLE\t--env CHR" > all_chr.tsv
 
 # Create a file of job parameters for finding SNPs and their reads.
 while read SAMPLE ; do
   for CHR in `seq 1 22` X Y ; do
-      echo -e "${SAMPLE}\t${CHR}" >> all_chr.tsv   
+      echo -e "${SAMPLE}\t${CHR}" >> all_chr.tsv
   done
 done < sample_id.txt
 
-
-########################## Create buckets, datasets, and sample info file ################################
-
-# Create a dataset on BigQuery for the samples to be analyzed for ASM
-#(Note: very few regions are available for Big Query datasets)
-bq --location=us mk --dataset ${PROJECT_ID}:${DATASET_ID}
-
-# Create buckets for the analysis and for the ref genome / variant database
-gsutil mb -c standard -l $REGION_ID gs://${OUTPUT_B} 
-gsutil mb -c standard -l $REGION_ID gs://${REF_DATA_B}
 
 ########################## Assemble and prepare the ref genome. Download variants database ################################
 
 # We assemble the ref genome, prepare it to be used by Bismark, and download/unzip the variant database
 # This step takes about 6 hours
-
-# Do it only once! 
 
 dsub \
   --provider google-v2 \
@@ -893,3 +889,6 @@ while read SAMPLE ; do
   touch delete_noncpg.log
   gsutil cp delete_noncpg.log gs://$OUTPUT_B/$SAMPLE/net_methyl/delete_noncpg.log
   gsutil rm gs://$OUTPUT_B/$SAMPLE/net_methyl/Non_CpG*
+
+# Delete reference genome files
+gsutil -m rm -r gs://${REF_DATA_B}/*

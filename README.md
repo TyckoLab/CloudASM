@@ -1,7 +1,7 @@
 
-# CloudASM: a cloud-based, ultra-efficient pipeline for mapping allele-specific DNA methylation
+# CloudASM: an ultra-efficient cloud-based pipeline for mapping allele-specific DNA methylation
 
-Last updated: October 11, 2019. Please check our preprint on [biorxiv](https://www.biorxiv.org/).
+Last updated: January 20, 2020. Please check our preprint on [biorxiv](https://www.biorxiv.org/).
 
 ## Table of contents
 
@@ -101,9 +101,11 @@ Google Cloud Computing (GCP) is a service for cloud computing, just like Amazon 
 
 To be able use CloudASM, you need to create an account on https://cloud.google.com/ and set up how you want to be billed (e.g. with a credit card). As of January 2020, GCP offers $300 in credits for opening an account -- which is enough to test this pipeline.
 
-Once you do that, you need to create a "project" within GCP and choose which geographical ["region" and "zone"](https://www.google.com/search?q=gcp+regions&rlz=1C5CHFA_enUS809US809&oq=gcp+regions&aqs=chrome..69i57.1415j0j7&sourceid=chrome&ie=UTF-8) you want to request resources from. It is recommended to pick a region and zone near your location. Every job you submit within your project will pull resources from the region and zone you chose.
+GCP offers a suite of services and CloudASM uses [Compute Engine](https://cloud.google.com/compute/), where virtual machines can be created and used for CloudASM's tasks, [Cloud Storage](https://cloud.google.com/storage/), where data is stored before and after being processed by virtual machines, and [Big Query](https://cloud.google.com/bigquery/), where the aligned reads, variants, and methylation states are analyzed jointly to estimate ASM.
 
-EXPLAIN HOW THE DATA IS IN "BUCKETS" ETC.
+Once you open an account on GCP, you need to create a "project" within GCP and choose which geographical ["region" and "zone"](https://www.google.com/search?q=gcp+regions&rlz=1C5CHFA_enUS809US809&oq=gcp+regions&aqs=chrome..69i57.1415j0j7&sourceid=chrome&ie=UTF-8) you want to request resources from. It is recommended to pick a region and zone near your location. Every job you submit within your project will pull resources from the region and zone you chose.
+
+Very basically, data is stored in "buckets" in the module `Cloud Storage`. When CloudASM executes a batch of jobs, virtual machines (also called "instances") are created to execute the job. They download the data from the bucket, obtain the script from CloudASM, execute the script jobs are run on virtual machines (also called instances). Depending on the job, CloudASM requests instances with 2-16 CPUs. 
 
 jobs with dsub requires the project name, the zone in which the
 virtual machine (VM) is to be launched, input bucket, output
@@ -127,11 +129,10 @@ For this reason, you will need to go over to the [Quotas](https://console.cloud.
 All of these values should be by default except the number of CPUs. We need 16 x 
 
 
-GCP offers a suite of services and CloudASM uses [Compute Engine](https://cloud.google.com/compute/), where virtual machines can be created and used for CloudASM's tasks, [Cloud Storage](https://cloud.google.com/storage/), where data is stored before and after being processed by virtual machines, and [Big Query](https://cloud.google.com/bigquery/), where the aligned reads, variants, and methylation states are analyzed jointly to estimate ASM.
 
 ## Installation
 
-To run CloudASM, you need to install GCP's Python package called ["dsub"](https://github.com/DataBiosphere/dsub). We recommend using the method where their repository is cloned in combination with the virtual environment.
+To run CloudASM, you need to install GCP's pipeline manager called ["dsub"](https://github.com/DataBiosphere/dsub). We recommend using the method where their repository is cloned in combination with the virtual environment.
 
 ## How to use the pipeline
 
@@ -139,7 +140,7 @@ To run CloudASM, you need to install GCP's Python package called ["dsub"](https:
 
 2. Clone this repository on your computer
 
-3. Define the **ASM variables** and the **GCP variables** in `master.sh`.
+3. Customize the **Library parameters**, the **ASM parameters** and the **GCP parameters** in `master.sh`.
 
 4. Launch a virtual environment `source dsub_libs/bin/activate` from dsub's repository.
 
@@ -149,13 +150,28 @@ To run CloudASM, you need to install GCP's Python package called ["dsub"](https:
 
 ## Test the pipeline
 
-https://console.cloud.google.com/storage/browser/cloudasm
+We prepared a small dataset (~24MB of zipped fastq files) for anyone to test CloudASM without incurring large costs. The dataset was prepared by recombining bisulfite-converted reads overlapping the positions 9,000,000 and 10,000,000 on chromosome 1, using the lymphoblastoid cell line GM12878 (identifier: ENCSR890UQO) made publicly available by the ENCODE consortium.
+
+The zipped fastq files are freely accessible on [our GCP’s storage space](https://console.cloud.google.com/storage/browser/cloudasm/fastq/gm12878/). Using this dataset, CloudASM assessed 456 SNPs and found 13 ASM regions. All the data generated by CloudASM for this dataset is stored [here](https://console.cloud.google.com/storage/browser/cloudasm). The final table of all variants and their assessment for ASM can be [downloaded here](https://storage.cloud.google.com/cloudasm/gm12878/asm/gm12878_asm.csv).
+
+To test the pipeline, you will have to change all GCP parameters except the variable `INPUT_B`. As you will when running the pipeline, for each sample, CloudASM creates the following folders:
+
+- aligned_per_chard
+- asm
+- bam_per_chard_and_chr
+- bam_per_chr
+- bedgraph
+- net_methyl
+- recal_bam_per_chr
+- sam
+- snps_for_cpg
+- split_fastq
+- trimmed_fastq
+- variants_per_chr
 
 ## Prepare the fastq files to be analyzed
 
-https://docs.google.com/spreadsheets/d/1WFpR_uM9BdBAdoCcIoVfM7rjuJF-khlvJTKHHd7bkEQ/edit#gid=0
-
-Create a bucket (variable `INPUT_B` in the master script) and create, within this bucket, one folder per sample (the folder should have the name of the sample -- do not use dashes in the name of the sample). In the `INPUT_B` bucket, upload a CSV file that describes the sample's files, using the model below:
+Prepare a sample info file using [this model](https://docs.google.com/spreadsheets/d/1WFpR_uM9BdBAdoCcIoVfM7rjuJF-khlvJTKHHd7bkEQ/edit#gid=0). Download the file as TSV file into your `run_files` directory (automatically created by the `master` script). The sample info file looks like the table below. The first column is the name of the sample, the 2nd column is the list of all the zipped fastq files, the 3rd column is the lane of the zipped fastq files, the 4th column is the read number of the zipped fastq file. The 4th column is created automatically from column 1, 3, and 4. 
 
 | sample | bucket_url | lane_id | read_id | file_new_name |
 | ------ | ---------- | ------- | ------- | ------------- |
@@ -164,11 +180,10 @@ Create a bucket (variable `INPUT_B` in the master script) and create, within thi
 | gm12878 | gs://encode-wgbs/gm12878/ENCFF798RSS.fastq.gz | L01 | R1 | gm12878_L01.R1.fastq |
 | gm12878 | gs://encode-wgbs/gm12878/ENCFF851HAT.fastq.gz | L02 | R2 | gm12878_L02.R2.fastq |
 
-Do not change the titles of the columns of this CSV file.
 
 ## Re-run failed jobs
 
-If you use preemptible machines, they may be taken back by GCP before the job ends. If this is the case, then you need to re-run the tasks that could not be completed before the termination of the preemptible machines executing them. The code below will enable you to create a new TSV of all the tasks that could not complete on time.
+If you use preemptible machines, they may be taken back by GCP before the job ends. If this is the case, then you need to re-run the tasks that could not be completed before the termination of the preemptible machines executing them. The code below will enable you to create a new TSV of all the tasks that could not complete on time. In the code below you need to replace the variables `TASK`, `JOB-ID`, and `USER`.
 
 ```
 JOB="TASK"
