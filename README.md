@@ -9,8 +9,10 @@ Last updated: January 20, 2020. Please check our preprint on [biorxiv](https://w
   - [Biology significance of CloudASM](#biology-significance-of-cloudasm)
   - [Main steps in the CloudASM pipeline](#Main-steps-in-the-CloudASM-pipeline)
   - [Bioinformatics packages used in CloudASM](#bioinformatics-packages-used-in-cloudasm)
+  - [If you are new to Google Cloud Computing](#if-you-are-new-to-google-cloud-computing)
   - [Installation](#installation)
   - [How to use the pipeline](#how-to-use-the-pipeline)
+  - [Test the pipeline](#test-the-pipeline)
   - [Prepare the fastq files to be analyzed](#prepare-the-fastq-files-to-be-analyzed)
   - [Re-run failed jobs](#re-run-failed-jobs)
 
@@ -49,16 +51,15 @@ After running the pipeline, the results will be available in a CSV file at `gs:/
 
 ## Biology significance of CloudASM
 
-Our laboratory has a long-standing expertise in studying allele-specific methylation. To make sure our pipeline avoids outputing false positives, we have implemented the following steps for stringency:
-
 ![Definition of an ASM region](https://github.com/TyckoLab/CloudASM/blob/master/ASM.png)
 
+Our laboratory has a long-standing expertise in studying allele-specific methylation. To make sure our pipeline avoids outputing false positives, we have implemented the following steps for stringency:
 
 - we filter out the reads where the confidence in the SNP nucleotide is lower than 30 (variable `SNP_SCORE`)
 - we remove CpGs from the context file where the C or G overlap with a SNP found in the unfiltered list of variants identified by BisSNP
 - We do not consider for ASM the SNPs that are not within 500 bp of at least a CpG
 
-To catch a "true positive" phenomenon of allele-specific methylation, we use two types of calculation:
+As described in the figure above, to catch a "true positive" phenomenon of allele-specific methylation, we use two types of calculation:
 
 1. single CpG level ASM ("CpG ASM") where we estimate if there is ASM on a CpG that is at least 5x covered on both alleles. We use a cut-off p-value of 0.05 on an exact Fisher's test.
 2. ASM over a region delimited by CpGs that are found on the same reads as the SNP. The region is delimited by two CpGs showing ASM, must contain at least 3 CpGs (variable `CPG_PER_asm_region`), must have at least 2 consecutive CpGs with ASM in the same direction (variable `CONSECUTIVE_CPG`), must have an effect size of at least 20% between the two allele (variable `ASM_REGION_EFFECT`). The effect size is the difference in methylation percentage between the two alleles calculated across all CpGs in the asm_region. We use a p-value of 0.05 on a Wilcoxon test.
@@ -70,12 +71,12 @@ All these variables can be adjusted by the user.
 The pipeline follows these steps:
 
 1. Create a bisulfite-converted genome from the reference genome that was chosen
-2. Unzip fastq files and split them into smaller files.
+2. Unzip fastq files and split them into smaller files ("chards").
 3. Trim each pair of fastq files
 4. Align each pair of fastq files
-5. Merge BAM files per chromosome and prepare them for variant calling.
+5. Merge BAM files per chromosome and prepare them for variant and net methylation calling.
 6. Net methylation calling
-7. Re-calibration of BAM files
+7. Re-calibrate of BAM files
 8. Variant calling
 9. Allele-specific methylation calling
 
@@ -105,30 +106,9 @@ GCP offers a suite of services and CloudASM uses [Compute Engine](https://cloud.
 
 Once you open an account on GCP, you need to create a "project" within GCP and choose which geographical ["region" and "zone"](https://www.google.com/search?q=gcp+regions&rlz=1C5CHFA_enUS809US809&oq=gcp+regions&aqs=chrome..69i57.1415j0j7&sourceid=chrome&ie=UTF-8) you want to request resources from. It is recommended to pick a region and zone near your location. Every job you submit within your project will pull resources from the region and zone you chose.
 
-Very basically, data is stored in "buckets" in the module `Cloud Storage`. When CloudASM executes a batch of jobs, virtual machines (also called "instances") are created to execute the job. They download the data from the bucket, obtain the script from CloudASM, execute the script jobs are run on virtual machines (also called instances). Depending on the job, CloudASM requests instances with 2-16 CPUs. 
+Very basically, data is stored in "buckets" in the module `Cloud Storage`. When CloudASM executes a batch of jobs, virtual machines (also called "instances") in the module `Compute Engine` are created to execute the job. They download the data from the bucket, obtain the script from CloudASM, execute the script jobs are run on virtual machines (also called instances). Depending on the job, CloudASM requests instances with 2-16 CPUs, adds larger disks to these instances (30-400 GB), and executes the commands on one of the Docker images we built or that were already available.
 
-jobs with dsub requires the project name, the zone in which the
-virtual machine (VM) is to be launched, input bucket, output
-bucket, logging bucket, docker image name, machine configuration and a command/program to execute. Upon receiving this
-information, Google cloud executes that command on a docker
-image launched on . Upon receiving this
-information, Google cloud executes that command on a docker
-image launched on a VM with the machine configuration
-specified by dsub.
-
-
-For this reason, you will need to go over to the [Quotas](https://console.cloud.google.com/iam-admin/quotas) and you need to make sure you have access to the following quotas to be able to run 10 WGBS samples at the same time:
-- 3,000 `Queries per 100 seconds` in Compute Engine API (zone: "Global")
-- 2,000 `Read requests per 100 seconds` in Compute Engine API (zone: "Global")
-- 2,000 `Lists requests per 100 seconds` in Compute Engine API (zone: "Global")
-- 50,000 `Queries per 100 seconds` for the Genomics API (zone: "Global")
-- 2,000 `In-use IP addresses` in Compute Engine API in your zone.
-- 200 TB of `Persistent Disk Standard (GB)` in your zone.
-- 100,000 CPUs in Compute Engine API in your zone.
-
-All of these values should be by default except the number of CPUs. We need 16 x 
-
-
+When you start running CloudASM on more than one sample, pipeline manager dsub will start queuing jobs in the same batch if you do not have enough resoures for your project. When you start running CloudASM, you may want to go to the [Quotas](https://console.cloud.google.com/iam-admin/quotas) and monitor which resources you need to increase.
 
 ## Installation
 
@@ -171,7 +151,7 @@ To test the pipeline, you will have to change all GCP parameters except the vari
 
 ## Prepare the fastq files to be analyzed
 
-Prepare a sample info file using [this model](https://docs.google.com/spreadsheets/d/1WFpR_uM9BdBAdoCcIoVfM7rjuJF-khlvJTKHHd7bkEQ/edit#gid=0). Download the file as TSV file into your `run_files` directory (automatically created by the `master` script). The sample info file looks like the table below. The first column is the name of the sample, the 2nd column is the list of all the zipped fastq files, the 3rd column is the lane of the zipped fastq files, the 4th column is the read number of the zipped fastq file. The 4th column is created automatically from column 1, 3, and 4. 
+Prepare a sample info file using [this model](https://docs.google.com/spreadsheets/d/1WFpR_uM9BdBAdoCcIoVfM7rjuJF-khlvJTKHHd7bkEQ/edit#gid=0). Download the file as TSV file into your `run_files` directory located where you cloned the CloudASM repository (`run_files` is automatically created by the `master` script). The sample info file looks like the table below. The first column is the name of the sample, the 2nd column is the list of all the zipped fastq files, the 3rd column is the lane of the zipped fastq files, the 4th column is the read number of the zipped fastq file. The 4th column is created automatically from column 1, 3, and 4. 
 
 | sample | bucket_url | lane_id | read_id | file_new_name |
 | ------ | ---------- | ------- | ------- | ------------- |
@@ -186,7 +166,7 @@ Prepare a sample info file using [this model](https://docs.google.com/spreadshee
 If you use preemptible machines, they may be taken back by GCP before the job ends. If this is the case, then you need to re-run the tasks that could not be completed before the termination of the preemptible machines executing them. The code below will enable you to create a new TSV of all the tasks that could not complete on time. In the code below you need to replace the variables `TASK`, `JOB-ID`, and `USER`.
 
 ```
-JOB="TASK"
+JOB="TASK" # e.g. align
 dstat --provider google-v2 --project PROJECT --jobs 'JOB-ID' --users 'USER' --status '*' > JOB.log
 cat $JOB.log | grep -v Success | tail -n +3 | awk '{print $2}' > ${JOB}_failed.txt
 sed -i '$ d' ${JOB}_failed.txt
