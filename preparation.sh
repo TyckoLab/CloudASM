@@ -27,16 +27,22 @@ wget $GENOME_URL
 # Unzip file 
 gunzip $(basename "$GENOME_URL") 
 
-# Move the file into the output folder
-mv $(basename "${GENOME_URL%.gz}") ${FOLDER}/ref_genome/$(basename "${GENOME_URL%.gz}")
+# Obtain the name of the file of the reference genome
+GENOME_NAME=$(basename "${GENOME_URL%.gz}")
+
+# Create a name of the genome with the extension "fasta"
+GENOME_NAME_FASTA=$(basename "${GENOME_NAME%.f*}".fasta)
+
+# Move and rename the file with the extension fasta.
+mv ${GENOME_NAME} ${FOLDER}/ref_genome/${GENOME_NAME_FASTA}
 
 # Create the fasta sequence dictionary file (.dict file), required by Bis-SNP
 java -jar ${PICARD}/CreateSequenceDictionary.jar \
-    R= ${FOLDER}/ref_genome/$(basename "${GENOME_URL%.gz}") \
-    O= ${FOLDER}/ref_genome/$(basename "${GENOME_URL%.f*}").dict
+    R= ${FOLDER}/ref_genome/${GENOME_NAME_FASTA} \
+    O= ${FOLDER}/ref_genome/${GENOME_NAME_FASTA%.fasta}.dict
 
 # Create a fasta index file, required by bis-snp (*.fai)
-samtools faidx ${FOLDER}/ref_genome/$(basename "${GENOME_URL%.gz}")
+samtools faidx ${FOLDER}/ref_genome/${GENOME_NAME_FASTA}
 
 echo "After dict and fai"
 ls -lhR $(dirname "${OUTPUT_DIR}")
@@ -63,5 +69,3 @@ gunzip $(basename "$VARIANTS_URL")
 
 # Move the file
 mv $(basename "${VARIANTS_URL%.gz}") ${FOLDER}/variants/$(basename "${VARIANTS_URL%.gz}")
-
-
