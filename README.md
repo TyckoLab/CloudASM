@@ -47,7 +47,7 @@ Here are the explanations of the different parameters on this table:
 - `nb_consec_pos_sig_asm`: Number of consecutive CpGs with significant ASM and where fractional methylation between ALT and REF is positive.
 - `neg_consec_sig_cpg`: Number consecutive of CpGs with significant ASM and where fractional methylation between ALT and REF is negative.
 
-After running the pipeline, the results will be available in a CSV file at `gs://OUTPUT_B/SAMPLE/asm/SAMPLE_asm.csv` where `SAMPLE` is the name of the sample and `OUTPUT_B` is the name of the bucket (one of the variables in the master script).
+See below how these look like on an example.
 
 ## Biology significance of CloudASM
 
