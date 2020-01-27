@@ -820,14 +820,14 @@ dsub \
 
 # Compute Wilcoxon's p-value per asm_region between the REF reads and the ALT reads
 # Calculate the number of consecutive ASMs in the same direction
-# Takes 4 minutes 
+# Takes 30 minutes 
 dsub \
   --provider google-v2 \
   --ssh \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --disk-size 100 \
-  --machine-type n1-standard-4 \
+  --machine-type n1-highmem-4 \
   --image ${DOCKER_PYTHON} \
   --logging $LOG \
   --env P_VALUE="${P_VALUE}" \
