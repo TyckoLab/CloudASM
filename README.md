@@ -1,7 +1,7 @@
 
 # CloudASM: an ultra-efficient cloud-based pipeline for mapping allele-specific DNA methylation
 
-Last updated: January 20, 2020. Please check our preprint on [biorxiv](https://www.biorxiv.org/).
+Last updated: January 20, 2020. Please check our preprint on [biorxiv](https://www.biorxiv.org/content/10.1101/2020.01.28.887430v1).
 
 ## Table of contents
 
