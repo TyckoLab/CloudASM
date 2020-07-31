@@ -141,7 +141,6 @@ done < sample_id.txt
 # This step takes about 6 hours
 
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
@@ -171,7 +170,6 @@ awk -v INPUT_B="${INPUT_B}" \
 
 # Launch job
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --logging $LOG \
@@ -225,7 +223,6 @@ echo "There are" $(cat trim.tsv | wc -l) "to be launched"
 
 # Submit job. 
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
@@ -283,7 +280,6 @@ echo "There are" $(cat align.tsv | wc -l) "to be launched"
 
 # Submit job (will require about 64,000 CPUs per sample)
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
@@ -325,7 +321,6 @@ done < sample_id.txt
 
 # Submit job
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --disk-size 30 \
   --preemptible \
@@ -352,7 +347,6 @@ done < sample_id.txt
 
 # Submit job
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --machine-type n1-highmem-8 \
   --preemptible \
@@ -382,7 +376,6 @@ done < sample_id.txt
 
 # Launch job
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --preemptible \
   --machine-type n1-highmem-8 \
@@ -431,7 +424,6 @@ done < sample_id.txt
 
 # Re-calibrate the BAM files.
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --machine-type n1-standard-16 \
   --preemptible \
@@ -463,7 +455,6 @@ done < sample_id.txt
 
 # Run tasks
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --machine-type n1-standard-16 \
   --disk-size 300 \
@@ -488,7 +479,6 @@ done < sample_id.txt
 
 # Launch job (24 jobs per sample -- 4 samples max if BigQuery limit stays the same)
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image $DOCKER_GCP \
@@ -513,7 +503,6 @@ dsub \
 # Append context files and keep CpGs with 10x coverage min 
 # Less than 15 minutes per sample.
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image $DOCKER_GCP \
@@ -542,7 +531,6 @@ done < sample_id.txt
 
 # Create a SAM in the bucket (1h45 for the largest chromosomes)
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --preemptible \
   --machine-type n1-standard-2 \
@@ -571,7 +559,6 @@ done < sample_id.txt
 # We append all chromosomes in the same file.
 # Takes 2 minutes
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
@@ -592,7 +579,6 @@ dsub \
 # Clean the SAM on BigQuery
 # 1 minute
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
@@ -606,7 +592,6 @@ dsub \
 # and the raw SAM files from Big Query
 # Takes 2 minutes
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
@@ -624,7 +609,6 @@ dsub \
 # If you select common snps, it takes about 2 minutes
 
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --ssh \
   --zones $ZONE_ID \
@@ -648,7 +632,6 @@ dsub \
 # We append all chromosomes files in the same file.
 # Takes about 4 minutes
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
@@ -674,7 +657,6 @@ dsub \
 # Clean the VCF -- create temporary tables (one per chr)
 # a few minutes
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
@@ -696,7 +678,6 @@ done < sample_id.txt
 # This is the most intensive step on BigQuery. The current limit is 100 concomitant queries at the same time
 # so you cannot run more than 4 samples at the same time without asking GCP to expand your quotas (easy process).
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
@@ -710,7 +691,6 @@ dsub \
 # and delete the individual chromosome files
 # Takes a few minutes
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
@@ -736,7 +716,6 @@ dsub \
 
 # Takes ~2 min
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
@@ -756,7 +735,6 @@ dsub \
 # This removes 1% of well-covered CpGs.
 # Takes about ~ 10 minutes
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
@@ -780,7 +758,6 @@ done < sample_id.txt
 
 # Takes about one hour (4 CPU-hours)
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --disk-size 50 \
@@ -804,7 +781,6 @@ done < sample_id.txt
 
 # Takes three minute
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
@@ -822,7 +798,6 @@ dsub \
 # Calculate the number of consecutive ASMs in the same direction
 # Takes 30 minutes 
 dsub \
-  --provider google-v2 \
   --ssh \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
@@ -840,7 +815,6 @@ dsub \
 
 # Takes 3 minutes (0.05 CPU-hours)
 dsub \
-  --provider google-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
