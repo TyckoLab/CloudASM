@@ -551,34 +551,27 @@ dsub \
 
 ######## Export all SAM to BigQuery
 
-# Prepare TSV file
-echo -e "--env SAMPLE\t--env SAM" > sam_to_bq.tsv
-
-while read SAMPLE ; do
-  for CHR in `seq 1 22` X Y ; do 
-    echo -e "$SAMPLE\tgs://$OUTPUT_B/${SAMPLE}/sam/${SAMPLE}_chr${CHR}_recal.sam" >> sam_to_bq.tsv
-  done
-  # Delete existing SAM on big query
-  bq rm -f -t ${PROJECT_ID}:${DATASET_ID}.${SAMPLE}_recal_sam_uploaded
-done < sample_id.txt
-
 # We append all chromosomes in the same file.
-# Takes 2 minutes
+# Takes a few minutes
+
 dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image ${DOCKER_GCP} \
   --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
-  --command 'bq --location=US load \
+  --env OUTPUT_B="${OUTPUT_B}" \
+  --command 'for CHR in `seq 1 22` X Y ; do
+             bq --location=US load \
                --replace=false \
                --source_format=CSV \
                --field_delimiter "\t" \
                --max_bad_records 1000000000 \
                ${DATASET_ID}.${SAMPLE}_recal_sam_uploaded \
-               ${SAM} \
-               read_id:STRING,flag:INTEGER,chr:STRING,read_start:INTEGER,mapq:INTEGER,cigar:STRING,rnext:STRING,mate_read_start:INTEGER,insert_length:INTEGER,seq:STRING,score:STRING,bismark:STRING,picard_flag:STRING,read_g:STRING,genome_strand:STRING,NM_tag:STRING,meth:STRING,score_before_recal:STRING,read_strand:STRING' \
-  --tasks sam_to_bq.tsv \
+               gs://${OUTPUT_B}/${SAMPLE}/sam/${SAMPLE}_chr${CHR}_recal.sam \
+               read_id:STRING,flag:INTEGER,chr:STRING,read_start:INTEGER,mapq:INTEGER,cigar:STRING,rnext:STRING,mate_read_start:INTEGER,insert_length:INTEGER,seq:STRING,score:STRING,bismark:STRING,picard_flag:STRING,read_g:STRING,genome_strand:STRING,NM_tag:STRING,meth:STRING,score_before_recal:STRING,read_strand:STRING
+            done' \
+  --tasks all_samples.tsv \
   --name 'export-sam' \
   --wait
 
@@ -603,8 +596,9 @@ dsub \
   --image ${DOCKER_GCP} \
   --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
-  --command 'gsutil rm ${SAM} && bq rm -f -t ${DATASET_ID}.${SAMPLE}_recal_sam_uploaded' \
-  --tasks sam_to_bq.tsv \
+  --env OUTPUT_B="${OUTPUT_B}" \
+  --command 'gsutil -m rm gs://${OUTPUT_B}/${SAMPLE}/sam/${SAMPLE}_chr*_recal.sam && bq rm -f -t ${DATASET_ID}.${SAMPLE}_recal_sam_uploaded' \
+  --tasks all_samples.tsv \
   --name 'delete-sam' \
   --wait
 
