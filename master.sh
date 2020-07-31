@@ -355,7 +355,7 @@ done < sample_id.txt
 dsub \
   --project $PROJECT_ID \
   --machine-type n1-highmem-8 \
-  --preemptible \
+  --preemptible 3 --retries 3 \
   --disk-size 120 \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
