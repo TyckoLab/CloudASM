@@ -181,7 +181,7 @@ dsub \
   --logging $LOG \
   --machine-type n1-standard-2 \
   --disk-size 2000 \
-  --preemptible \
+  --preemptible 3 --retries 3 \
   --image $DOCKER_GCP \
   --command 'gunzip ${ZIPPED} && \
              mv ${ZIPPED%.gz} $(dirname "${ZIPPED}")/${FASTQ} && \
@@ -233,7 +233,7 @@ dsub \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
   --machine-type n1-standard-2 \
-  --preemptible \
+  --preemptible 3 --retries 3 \
   --logging $LOG \
   --env ADAPTER_A="${ADAPTER_A}" \
   --env ADAPTER_A2="${ADAPTER_A2}" \
@@ -290,7 +290,7 @@ dsub \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
   --machine-type n1-standard-16 \
-  --preemptible \
+  --preemptible 3 --retries 3 \
   --disk-size 40 \
   --logging $LOG \
   --input-recursive REF_GENOME="${REF_GENOME}" \
@@ -329,7 +329,7 @@ done < sample_id.txt
 dsub \
   --project $PROJECT_ID \
   --disk-size 30 \
-  --preemptible \
+  --preemptible 3 --retries 3 \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
   --logging $LOG \
@@ -383,7 +383,7 @@ done < sample_id.txt
 # Launch job
 dsub \
   --project $PROJECT_ID \
-  --preemptible \
+  --preemptible 3 --retries 3 \
   --machine-type n1-highmem-8 \
   --disk-size 300 \
   --zones $ZONE_ID \
@@ -432,7 +432,7 @@ done < sample_id.txt
 dsub \
   --project $PROJECT_ID \
   --machine-type n1-standard-16 \
-  --preemptible \
+  --preemptible 3 --retries 3 \
   --disk-size 400 \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
@@ -464,7 +464,7 @@ dsub \
   --project $PROJECT_ID \
   --machine-type n1-standard-16 \
   --disk-size 300 \
-  --preemptible \
+  --preemptible 3 --retries 3 \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
   --logging $LOG \
@@ -538,7 +538,7 @@ done < sample_id.txt
 # Create a SAM in the bucket (1h45 for the largest chromosomes)
 dsub \
   --project $PROJECT_ID \
-  --preemptible \
+  --preemptible 3 --retries 3 \
   --machine-type n1-standard-2 \
   --disk-size 200 \
   --zones $ZONE_ID \
