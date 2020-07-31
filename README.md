@@ -125,7 +125,7 @@ The current version of CloudASM was validated with dsub 0.3.7.
 
 3. Customize the **Library parameters**, the **ASM parameters** and the **GCP parameters** in `master.sh`.
 
-4. Launch a virtual environment `source dsub_libs/bin/activate` from dsub's repository.
+4. Launch a virtual environment by typing `python3 -m venv dsub_libs` and then `source dsub_libs/bin/activate` (does not matter in which directory you are located).
 
 5. Copy, sequentially, all instructions from `master.sh` into the terminal, block by block (a "block" is a set of instructions included in between two headlines). 
 
