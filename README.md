@@ -1,7 +1,7 @@
 
 # CloudASM: an ultra-efficient cloud-based pipeline for mapping allele-specific DNA methylation
 
-Last updated: January 20, 2020. Please check our preprint on [biorxiv](https://www.biorxiv.org/content/10.1101/2020.01.28.887430v1).
+Last updated: July 31, 2020. Please check our preprint on [biorxiv](https://www.biorxiv.org/content/10.1101/2020.01.28.887430v1) and our published paper on [Bioinformatics](https://doi.org/10.1093/bioinformatics/btaa149).
 
 ## Table of contents
 
@@ -33,8 +33,9 @@ This pipeline takes as an input  zipped fastq files and outputs a table of all s
 Here are the explanations of the different parameters on this table:
 
 - `chr`: this this the chromosome number where the SNP is located
-- `snp_id`: the unique identifier for the SNP that was found to have ASM.
+- `snp_id`: the unique identifier for the SNP that was evaluated for ASM.
 - `snp_pos`: Coordinate of the SNP.
+- `asm_snp`: whether the SNP has has ASM or not.
 - `asm_region_inf`: Position of the CpG with significant ASM for the SNP `snp_id` and the smallest coordinate.
 - `asm_region_sup`: Position of the CpG with significant ASM for the SNP `snp_id` and the smallest coordinate.
 - `nb_ref_reads`: Number of genomic segments that cover the REF of the SNP.
@@ -106,7 +107,7 @@ GCP offers a suite of services and CloudASM uses [Compute Engine](https://cloud.
 
 Once you open an account on GCP, you need to create a "project" within GCP and choose which geographical ["region" and "zone"](https://www.google.com/search?q=gcp+regions&rlz=1C5CHFA_enUS809US809&oq=gcp+regions&aqs=chrome..69i57.1415j0j7&sourceid=chrome&ie=UTF-8) you want to request resources from. It is recommended to pick a region and zone near your location. Every job you submit within your project will pull resources from the region and zone you chose.
 
-Very basically, data is stored in "buckets" in the module `Cloud Storage`. When CloudASM executes a batch of jobs, virtual machines (also called "instances") in the module `Compute Engine` are created to execute the job. They download the data from the bucket, obtain the script from CloudASM, execute the script jobs are run on virtual machines (also called instances). Depending on the job, CloudASM requests instances with 2-16 CPUs, adds larger disks to these instances (30-400 GB), and executes the commands on one of the Docker images we built or that were already available.
+Very basically, data is stored in "buckets" in the module `Cloud Storage`. When CloudASM executes a batch of jobs, virtual machines (also called "instances") in the module `Compute Engine` are created to execute the job. They download the data from the bucket, obtain the script from CloudASM, execute the script, and upload the output of the script back in the bucket (or BigQuery). Depending on the job, CloudASM requests instances with 2-16 CPUs, adds larger disks to these instances (30-400 GB), and executes the commands on one of the Docker images we built or that were already available.
 
 When you start running CloudASM on more than one sample, pipeline manager dsub will start queuing jobs in the same batch if you do not have enough resoures for your project. When you start running CloudASM, you may want to go to the [Quotas](https://console.cloud.google.com/iam-admin/quotas) and monitor which resources you need to increase.
 
@@ -151,6 +152,8 @@ To test the pipeline, you will have to change all GCP parameters except the vari
 
 ## Prepare the fastq files to be analyzed
 
+When naming your samples, do not use dashes. Only use underscores.
+
 Prepare a sample info file using [this model](https://docs.google.com/spreadsheets/d/1WFpR_uM9BdBAdoCcIoVfM7rjuJF-khlvJTKHHd7bkEQ/edit#gid=0). Download the file as TSV file into your `run_files` directory located where you cloned the CloudASM repository (`run_files` is automatically created by the `master` script). The sample info file looks like the table below. The first column is the name of the sample, the 2nd column is the list of all the zipped fastq files, the 3rd column is the lane of the zipped fastq files, the 4th column is the read number of the zipped fastq file. The 4th column is created automatically from column 1, 3, and 4. 
 
 | sample | bucket_url | lane_id | read_id | file_new_name |
@@ -159,22 +162,3 @@ Prepare a sample info file using [this model](https://docs.google.com/spreadshee
 | gm12878 | gs://encode-wgbs/gm12878/ENCFF585BXF.fastq.gz | L02 | R1 | gm12878_L02.R1.fastq |
 | gm12878 | gs://encode-wgbs/gm12878/ENCFF798RSS.fastq.gz | L01 | R1 | gm12878_L01.R1.fastq |
 | gm12878 | gs://encode-wgbs/gm12878/ENCFF851HAT.fastq.gz | L02 | R2 | gm12878_L02.R2.fastq |
-
-
-## Re-run failed jobs
-
-If you use preemptible machines, they may be taken back by GCP before the job ends. If this is the case, then you need to re-run the tasks that could not be completed before the termination of the preemptible machines executing them. The code below will enable you to create a new TSV of all the tasks that could not complete on time. In the code below you need to replace the variables `TASK`, `JOB-ID`, and `USER`.
-
-```
-JOB="TASK" # e.g. align
-dstat --provider google-v2 --project PROJECT --jobs 'JOB-ID' --users 'USER' --status '*' > JOB.log
-cat $JOB.log | grep -v Success | tail -n +3 | awk '{print $2}' > ${JOB}_failed.txt
-sed -i '$ d' ${JOB}_failed.txt
-
-head -1 ${JOB}.tsv > ${JOB}_rerun.tsv
-
-while read INDEX ; do
-  ROW=$(($INDEX +1))
-  sed -n "${ROW}p" ${JOB}.tsv >> ${JOB}_rerun.tsv
-done < ${JOB}_failed.txt
-```
