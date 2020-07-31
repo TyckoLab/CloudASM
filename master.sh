@@ -491,18 +491,21 @@ dsub \
   --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
   --env OUTPUT_B="${OUTPUT_B}" \
-  --command 'for STRAND in "OB" "OT" ; do 
-               echo "Strand" $STRAND
-               bq --location=US load \
-               --replace=false \
-               --source_format=CSV \
-               --skip_leading_rows 1 \
-               --field_delimiter "\t" \
-               ${DATASET_ID}.${SAMPLE}_CpG${STRAND} \
-               gs://${OUTPUT_B}/${SAMPLE}/net_methyl/CpG_${STRAND}_${SAMPLE}_chr${CHR}.txt \
-               read_id:STRING,meth_state:STRING,chr:STRING,pos:INTEGER,meth_call:STRING
-               done' \
-  --tasks all_chr.tsv \
+  --command 'for CHR in `seq 1 22` X Y ; do
+               echo "Chromosome" ${CHR}
+               for STRAND in "OB" "OT" ; do 
+                echo "Strand" $STRAND
+                bq --location=US load \
+                --replace=false \
+                --source_format=CSV \
+                --skip_leading_rows 1 \
+                --field_delimiter "\t" \
+                ${DATASET_ID}.${SAMPLE}_CpG${STRAND} \
+                gs://${OUTPUT_B}/${SAMPLE}/net_methyl/CpG_${STRAND}_${SAMPLE}_chr${CHR}.txt \
+                read_id:STRING,meth_state:STRING,chr:STRING,pos:INTEGER,meth_call:STRING
+                done
+              done' \
+  --tasks all_samples.tsv \
   --name 'export-cpg' \
   --wait
 
