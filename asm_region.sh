@@ -83,7 +83,8 @@ bq query \
         WELL_COVERED_CPG AS (
             SELECT 
                 chr AS chr_well_cov, 
-                pos AS pos_well_cov
+                pos AS pos_well_cov,
+                snp_id
             FROM ${DATASET_ID}.${SAMPLE}_cpg_asm
         )
         -- Keep the combination of CpG, read_id, allele for which CpGs are at least 5x covered on each allele
@@ -97,8 +98,10 @@ bq query \
                 read_id  
             FROM ALL_CPG
             INNER JOIN WELL_COVERED_CPG
-            ON chr_cpg = chr_well_cov 
-               AND pos_cpg = pos_well_cov 
+            ON 
+                chr_cpg = chr_well_cov AND
+                pos_cpg = pos_well_cov AND
+                snp_id = snp_id_cpg
         "
 
 # Create a table of SNPs and an array of reads and their fractional methylation 
