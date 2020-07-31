@@ -115,6 +115,8 @@ When you start running CloudASM on more than one sample, pipeline manager dsub w
 
 To run CloudASM, you need to install GCP's pipeline manager called ["dsub"](https://github.com/DataBiosphere/dsub). We recommend using the method where their repository is cloned in combination with the virtual environment. You can also [install dsub via conda](https://anaconda.org/conda-forge/dsub) but this was not created by the dsub creators so it may not have the latest version of dsub.
 
+The current version of CloudASM was validated with dsub 0.3.7.
+
 ## How to use the pipeline
 
 1. Prepare the zipped fastq files to be analyzed (see below how)
