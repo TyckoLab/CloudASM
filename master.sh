@@ -848,21 +848,21 @@ done < sample_id.txt
 while read SAMPLE ; do
   touch split_deleted_after_alignment.log
   gsutil cp split_deleted_after_alignment.log gs://$OUTPUT_B/$SAMPLE/split_fastq/deleted_after_alignment.log
-  gsutil rm gs://$OUTPUT_B/$SAMPLE/split_fastq/*.fastq
+  gsutil -m rm gs://$OUTPUT_B/$SAMPLE/split_fastq/*.fastq
 done < sample_id.txt
 
 # Delete BAM files split per chard and chromosome
 while read SAMPLE ; do
   touch bam_deleted.log
   gsutil cp bam_deleted.log gs://$OUTPUT_B/$SAMPLE/bam_per_chard_and_chr/bam_deleted.log
-  gsutil rm gs://$OUTPUT_B/$SAMPLE/bam_per_chard_and_chr/*.bam
+  gsutil -m rm gs://$OUTPUT_B/$SAMPLE/bam_per_chard_and_chr/*.bam
 done < sample_id.txt
 
 # Delete non-CpG files context files
 while read SAMPLE ; do
   touch delete_noncpg.log
   gsutil cp delete_noncpg.log gs://$OUTPUT_B/$SAMPLE/net_methyl/delete_noncpg.log
-  gsutil rm gs://$OUTPUT_B/$SAMPLE/net_methyl/Non_CpG*
+  gsutil -m rm gs://$OUTPUT_B/$SAMPLE/net_methyl/Non_CpG*
 
 # Delete reference genome files
 gsutil -m rm -r gs://${REF_DATA_B}/*
