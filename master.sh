@@ -118,7 +118,7 @@ awk -F "\t" '{if (NR!=1) print $1}' samples.tsv | uniq > sample_id.txt
 # Check that there is no dashes in the samples name. If the following command displays nothing
 # you're good to go.
 echo "Checking that there is no dashes in the names"
-cat sample_id.tables | grep -
+cat sample_id.txt | grep -
 
 
 # Prepare TSV file with just the samples (used for most jobs)
