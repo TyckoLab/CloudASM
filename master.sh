@@ -147,6 +147,7 @@ done < sample_id.txt
 # This step takes about 6 hours
 
 dsub \
+  --provider google-cls-v2 \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --image $DOCKER_GENOMICS \
