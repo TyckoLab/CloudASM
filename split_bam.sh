@@ -17,6 +17,6 @@ FASTQ=$(basename ${BAM%.bam})
 
 # Loop on chromosomes
 for CHR in `seq 1 22` X Y ; do
-    samtools view -bh ${SORTED_BAM} ${CHR} > ${FOLDER}/${FASTQ}_chr${CHR}.bam
+    samtools view -bh ${SORTED_BAM} chr${CHR} > ${FOLDER}/${FASTQ}_chr${CHR}.bam
 done
 
