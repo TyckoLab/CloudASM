@@ -26,7 +26,7 @@ $JAVA/java \
     -Djava.io.tmpdir=${TMP_DIR} \
     -jar -Xmx52g ${BIS_SNP}/BisSNP-0.82.2.jar \
     -L $CHR \
-    -R $(dirname "${REF_GENOME}")/human_g1k_v37.fasta \
+    -R $(dirname "${REF_GENOME}")/*.fasta \
     -I $(dirname "${BAM}")/${SAMPLE}_chr${CHR}_sorted.bam \
     -T BisulfiteCountCovariates \
     -knownSites ${ALL_VARIANTS} \
@@ -41,7 +41,7 @@ $JAVA/java \
     -Djava.io.tmpdir=${TMP_DIR} \
     -jar -Xmx52g ${BIS_SNP}/BisSNP-0.82.2.jar \
     -L $CHR \
-    -R $(dirname "${REF_GENOME}")/human_g1k_v37.fasta \
+    -R $(dirname "${REF_GENOME}")/*.fasta \
     -I $(dirname "${BAM}")/${SAMPLE}_chr${CHR}_sorted.bam \
     -o $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.bam \
     -T BisulfiteTableRecalibration \
