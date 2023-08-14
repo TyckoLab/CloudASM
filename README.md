@@ -35,7 +35,7 @@ Here are the explanations of the different parameters on this table:
 - `chr`: this this the chromosome number where the SNP is located
 - `snp_id`: the unique identifier for the SNP that was evaluated for ASM.
 - `snp_pos`: Coordinate of the SNP.
-- `asm_snp`: whether the SNP has has ASM or not.
+- `asm_snp`: whether the SNP has ASM or not.
 - `asm_region_inf`: Position of the CpG with significant ASM for the SNP `snp_id` and the smallest coordinate.
 - `asm_region_sup`: Position of the CpG with significant ASM for the SNP `snp_id` and the smallest coordinate.
 - `nb_ref_reads`: Number of genomic segments that cover the REF of the SNP.
