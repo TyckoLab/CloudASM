@@ -80,8 +80,8 @@ LOG="gs://$OUTPUT_B/logging/${DATASET_ID}"
 # Folder to the bisulfite-converted reference genome
 REF_GENOME="gs://$REF_DATA_B/$GENOME/ref_genome" 
 
-# Variant database used in SNP calling
-ALL_VARIANTS="gs://$REF_DATA_B/$GENOME/variants/*.vcf" 
+# Variant database used in SNP calling (here, All_20180418_GATK.vcf is used for hg38)
+ALL_VARIANTS="gs://$REF_DATA_B/$GENOME/variants/All_20180418_GATK.vcf" 
 
 # Docker image with genomic packages 
 DOCKER_GENOMICS="gcr.io/hackensack-tyco/wgbs-asm"
@@ -90,7 +90,7 @@ DOCKER_GENOMICS="gcr.io/hackensack-tyco/wgbs-asm"
 DOCKER_PYTHON="gcr.io/hackensack-tyco/python"
 
 # Off-the-shelf Docker image for GCP-only jobs
-DOCKER_GCP="google/cloud-sdk:255.0.0"
+DOCKER_GCP="google/cloud-sdk:442.0.0"
 
 # Create a local folder on the computer 
 mkdir -p ${SCRIPTS}/"run_files" 
@@ -180,7 +180,7 @@ dsub \
   --project $PROJECT_ID \
   --zones $ZONE_ID \
   --logging $LOG \
-  --machine-type n1-standard-2 \
+  --machine-type n1-highmem-2 \
   --disk-size 2000 \
   --preemptible 3 --retries 3 \
   --image $DOCKER_GCP \
@@ -617,7 +617,7 @@ dsub \
   --ssh \
   --zones $ZONE_ID \
   --machine-type n1-standard-2 \
-  --disk-size 40 \
+  --boot-disk-size 40 \
   --image $DOCKER_GENOMICS \
   --logging $LOG \
   --env DATASET_ID="${DATASET_ID}" \
@@ -645,14 +645,16 @@ dsub \
   --command 'bq rm -f -t ${DATASET_ID}.${SAMPLE}_vcf_uploaded \
             && for CHR in `seq 1 22` X Y ; do 
                 sleep 1s \
+                # Determine the number of header lines to skip
+                HEADER_LINES=$(gsutil cat gs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}_filtered.vcf | grep -E "^##|^#" | wc -l) \
                 && bq --location=US load \
                   --replace=false \
                   --source_format=CSV \
                   --field_delimiter "\t" \
-                  --skip_leading_rows 117 \
+                  --skip_leading_rows $HEADER_LINES \
                   ${DATASET_ID}.${SAMPLE}_vcf_uploaded \
                   gs://$OUTPUT_B/$SAMPLE/variants_per_chr/${SAMPLE}_chr${CHR}_filtered.vcf \
-                  chr:STRING,pos:STRING,snp_id:STRING,ref:STRING,alt:STRING,qual:FLOAT,filter:STRING,info:STRING,format:STRING,data:STRING
+		  chr:STRING,pos:STRING,snp_id:STRING,ref:STRING,alt:STRING,qual:FLOAT,filter:STRING,info:STRING,format:STRING,data:STRING
                done' \
   --tasks all_samples.tsv \
   --name 'upld-filt-vcf' \
