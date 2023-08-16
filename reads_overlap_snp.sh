@@ -23,7 +23,7 @@ bq query \
           seq, 
           score_before_recal 
         FROM ${DATASET_ID}.${SAMPLE}_recal_sam
-        WHERE chr = '${CHR}'
+        WHERE (chr = '${CHR}' OR chr = 'chr${CHR}')
       ),
       trimmed_sam AS (
         SELECT 
@@ -42,7 +42,7 @@ bq query \
           CT_strand, 
           GA_strand 
         FROM ${DATASET_ID}.${SAMPLE}_vcf
-        WHERE chr = '${CHR}'
+        WHERE (chr = '${CHR}' OR chr = 'chr${CHR}')
       ),
       -- Perform a Broadcast join with the minimum amount of columns
       sam_vcf_join AS (
