@@ -22,10 +22,11 @@ java \
       MAX_RECORDS_IN_RAM=9000000
 
 echo "Create recal file. This requires a specific version of Java."
-$JAVA/java \
+java \
     -Djava.io.tmpdir=${TMP_DIR} \
-    -jar -Xmx52g ${BIS_SNP}/BisSNP-0.82.2.jar \
-    -L $CHR \
+    -Xmx52g \
+    -jar ${BIS_SNP}/BisSNP-0.82.2.jar \
+    -L chr$CHR \
     -R $(dirname "${REF_GENOME}")/*.fasta \
     -I $(dirname "${BAM}")/${SAMPLE}_chr${CHR}_sorted.bam \
     -T BisulfiteCountCovariates \
@@ -37,10 +38,11 @@ $JAVA/java \
     -nt 12
 
 echo  "Generates a re-calibrated BAM and BAI file"
-$JAVA/java \
+java \
     -Djava.io.tmpdir=${TMP_DIR} \
-    -jar -Xmx52g ${BIS_SNP}/BisSNP-0.82.2.jar \
-    -L $CHR \
+    -Xmx52g \
+    -jar ${BIS_SNP}/BisSNP-0.82.2.jar \
+    -L chr$CHR \
     -R $(dirname "${REF_GENOME}")/*.fasta \
     -I $(dirname "${BAM}")/${SAMPLE}_chr${CHR}_sorted.bam \
     -o $(dirname "${OUTPUT_DIR}")/${SAMPLE}_chr${CHR}_recal.bam \
