@@ -23,7 +23,7 @@ echo "Variant call (mmq is the quality score)"
 $JAVA/java -Xmx50g \
     -Djava.io.tmpdir=${TMP_DIR} \
     -jar ${BIS_SNP}/BisSNP-0.82.2.jar \
-    -L ${CHR} \
+    -L chr${CHR} \
     -T BisulfiteGenotyper \
     -R $(dirname "${REF_GENOME}")/*.fasta \
     -D ${ALL_VARIANTS} \
@@ -59,7 +59,7 @@ echo "Remove false positives by removing the calls on super high-coverage region
 $JAVA/java -Xmx50g \
     -Djava.io.tmpdir=${TMP_DIR} \
     -jar ${BIS_SNP}/BisSNP-0.82.2.jar \
-    -L $CHR \
+    -L chr$CHR \
     -R $(dirname "${REF_GENOME}")/*.fasta \
     -T VCFpostprocess \
     -oldVcf $(dirname "${BAM_BAI}")/${SAMPLE}.raw.sort_chr$CHR.vcf \
