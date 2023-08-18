@@ -869,6 +869,7 @@ while read SAMPLE ; do
   touch delete_noncpg.log
   gsutil cp delete_noncpg.log gs://$OUTPUT_B/$SAMPLE/net_methyl/delete_noncpg.log
   gsutil -m rm gs://$OUTPUT_B/$SAMPLE/net_methyl/Non_CpG*
+done < sample_id.txt
 
 # Delete reference genome files
 gsutil -m rm -r gs://${REF_DATA_B}/*
